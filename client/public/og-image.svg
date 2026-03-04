@@ -1,0 +1,118 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0f1c"/>
+      <stop offset="50%" style="stop-color:#0d1425"/>
+      <stop offset="100%" style="stop-color:#0a1628"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a3e635"/>
+      <stop offset="100%" style="stop-color:#34d399"/>
+    </linearGradient>
+    <linearGradient id="iconBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a3e635"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="40" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="smallGlow">
+      <feGaussianBlur stdDeviation="15" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  
+  <!-- Glow orbs -->
+  <circle cx="900" cy="100" r="250" fill="#a3e635" opacity="0.06" filter="url(#glow)"/>
+  <circle cx="200" cy="500" r="200" fill="#34d399" opacity="0.05" filter="url(#glow)"/>
+  <circle cx="600" cy="300" r="180" fill="#22d3ee" opacity="0.03" filter="url(#glow)"/>
+  
+  <!-- Subtle grid pattern -->
+  <g opacity="0.03" stroke="#ffffff" stroke-width="0.5">
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="200" x2="1200" y2="200"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="400" x2="1200" y2="400"/>
+    <line x1="0" y1="500" x2="1200" y2="500"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+  </g>
+  
+  <!-- Floating card 1 - Health Monitoring -->
+  <g transform="translate(750, 120)" filter="url(#smallGlow)">
+    <rect x="0" y="0" width="220" height="70" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.1"/>
+    <rect x="14" y="15" width="40" height="40" rx="10" fill="#10b981" fill-opacity="0.2"/>
+    <!-- Heart icon -->
+    <path d="M34 28 C34 24, 28 22, 28 26 C28 22, 22 24, 22 28 C22 34, 28 38, 28 38 C28 38, 34 34, 34 28Z" fill="#34d399" transform="translate(0, 0)"/>
+    <text x="66" y="33" fill="#ffffff" font-family="Inter, sans-serif" font-size="13" font-weight="600">Health Monitoring</text>
+    <text x="66" y="48" fill="#ffffff" fill-opacity="0.4" font-family="Inter, sans-serif" font-size="10">AI-powered insights</text>
+  </g>
+  
+  <!-- Floating card 2 - Secure & Private -->
+  <g transform="translate(800, 400)" filter="url(#smallGlow)">
+    <rect x="0" y="0" width="210" height="70" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.1"/>
+    <rect x="14" y="15" width="40" height="40" rx="10" fill="#22d3ee" fill-opacity="0.2"/>
+    <!-- Shield icon -->
+    <path d="M34 25 L34 33 C34 37 28 40 28 40 C28 40 22 37 22 33 L22 25 L28 22Z" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+    <text x="66" y="33" fill="#ffffff" font-family="Inter, sans-serif" font-size="13" font-weight="600">Secure &amp; Private</text>
+    <text x="66" y="48" fill="#ffffff" fill-opacity="0.4" font-family="Inter, sans-serif" font-size="10">Your data is protected</text>
+  </g>
+  
+  <!-- Floating card 3 - Smart Analysis -->
+  <g transform="translate(880, 260)" filter="url(#smallGlow)">
+    <rect x="0" y="0" width="210" height="70" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.1"/>
+    <rect x="14" y="15" width="40" height="40" rx="10" fill="#a3e635" fill-opacity="0.2"/>
+    <!-- Sparkles icon -->
+    <circle cx="28" cy="31" r="2" fill="#a3e635"/>
+    <circle cx="34" cy="27" r="1.5" fill="#a3e635" opacity="0.7"/>
+    <circle cx="24" cy="37" r="1.2" fill="#a3e635" opacity="0.5"/>
+    <text x="66" y="33" fill="#ffffff" font-family="Inter, sans-serif" font-size="13" font-weight="600">Smart Analysis</text>
+    <text x="66" y="48" fill="#ffffff" fill-opacity="0.4" font-family="Inter, sans-serif" font-size="10">Gemini AI powered</text>
+  </g>
+  
+  <!-- Logo icon -->
+  <g transform="translate(80, 200)">
+    <rect x="0" y="0" width="64" height="64" rx="18" fill="url(#iconBg)"/>
+    <!-- Activity/pulse icon -->
+    <polyline points="14,32 22,32 26,20 32,44 36,32 50,32" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- App name -->
+  <text x="160" y="248" fill="#ffffff" font-family="Inter, sans-serif" font-size="42" font-weight="800" letter-spacing="-1">RuralCare</text>
+  
+  <!-- Tagline -->
+  <text x="82" y="310" fill="#ffffff" font-family="Inter, sans-serif" font-size="38" font-weight="800">Your Health,</text>
+  <text x="82" y="362" fill="url(#accent)" font-family="Inter, sans-serif" font-size="38" font-weight="800">Our Priority</text>
+  
+  <!-- Description -->
+  <text x="82" y="415" fill="#ffffff" fill-opacity="0.5" font-family="Inter, sans-serif" font-size="16" font-weight="400">AI-powered health assistant designed for rural communities.</text>
+  <text x="82" y="438" fill="#ffffff" fill-opacity="0.5" font-family="Inter, sans-serif" font-size="16" font-weight="400">Instant symptom checks, health insights &amp; nearby hospitals.</text>
+  
+  <!-- Trust badges -->
+  <g transform="translate(82, 480)">
+    <rect x="0" y="0" width="100" height="32" rx="16" fill="#ffffff" fill-opacity="0.05"/>
+    <text x="50" y="21" fill="#ffffff" fill-opacity="0.3" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">HIPAA Aware</text>
+    
+    <rect x="115" y="0" width="95" height="32" rx="16" fill="#ffffff" fill-opacity="0.05"/>
+    <text x="162" y="21" fill="#ffffff" fill-opacity="0.3" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Encrypted</text>
+    
+    <rect x="224" y="0" width="100" height="32" rx="16" fill="#ffffff" fill-opacity="0.05"/>
+    <text x="274" y="21" fill="#ffffff" fill-opacity="0.3" font-family="Inter, sans-serif" font-size="10" font-weight="600" text-anchor="middle">AI Powered</text>
+  </g>
+  
+  <!-- Bottom accent line -->
+  <rect x="0" y="622" width="1200" height="8" fill="url(#accent)"/>
+</svg>

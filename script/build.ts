@@ -33,8 +33,24 @@ const allowlist = [
   "zod-validation-error",
 ];
 
+async function generateOgImage() {
+  try {
+    const sharp = (await import("sharp")).default;
+    const { readFileSync } = await import("fs");
+    const { resolve } = await import("path");
+    const svg = readFileSync(resolve("client/public/og-image.svg"));
+    await sharp(svg).resize(1200, 630).png({ quality: 90 }).toFile(resolve("client/public/og-image.png"));
+    console.log("✅ Generated og-image.png");
+  } catch (err) {
+    console.warn("⚠️  Could not generate og-image.png:", err);
+  }
+}
+
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
+
+  console.log("generating OG image...");
+  await generateOgImage();
 
   console.log("building client...");
   await viteBuild();
