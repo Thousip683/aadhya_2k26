@@ -17,6 +17,8 @@ if (!GEMINI_API_KEY) {
   console.warn("⚠️  GEMINI_API_KEY not set. AI symptom analysis will not work.");
 }
 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+
 // Models to try in order (if one hits a rate limit, try the next)
 const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"];
 
@@ -385,6 +387,54 @@ export async function registerRoutes(
       return res.status(401).json({ message: "Not authenticated" });
     }
     res.json(user);
+  });
+
+  // Google OAuth — client sends Google ID token, server verifies it
+  app.get("/api/auth/google-client-id", (_req, res) => {
+    res.json({ clientId: GOOGLE_CLIENT_ID });
+  });
+
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      const { credential } = req.body;
+      if (!credential) {
+        return res.status(400).json({ message: "Missing Google credential" });
+      }
+      if (!GOOGLE_CLIENT_ID) {
+        return res.status(500).json({ message: "Google OAuth not configured on server" });
+      }
+
+      // Verify the Google ID token
+      const response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`
+      );
+      if (!response.ok) {
+        return res.status(401).json({ message: "Invalid Google token" });
+      }
+      const payload = await response.json() as {
+        aud: string;
+        email: string;
+        email_verified: string;
+        name: string;
+        sub: string;
+      };
+
+      // Verify the token was issued for our app
+      if (payload.aud !== GOOGLE_CLIENT_ID) {
+        return res.status(401).json({ message: "Token audience mismatch" });
+      }
+      if (payload.email_verified !== "true") {
+        return res.status(401).json({ message: "Email not verified" });
+      }
+
+      // Find or create the user
+      const user = storage.findOrCreateGoogleUser(payload.email, payload.name || payload.email.split("@")[0]);
+      req.session.userId = user.id;
+      res.json({ user });
+    } catch (err) {
+      console.error("Google auth error:", err);
+      res.status(500).json({ message: "Google authentication failed" });
+    }
   });
 
   app.patch("/api/auth/update-profile", requireAuth, (req, res) => {

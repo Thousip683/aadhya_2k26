@@ -111,6 +111,28 @@ class SQLiteStorage {
     return { id: user.id, name: user.name, username: user.username, isAdmin: user.is_admin === 1, guardianEmail: (user as any).guardian_email ?? null };
   }
 
+  /** Find or create a user from Google OAuth. Username = email, password = random placeholder. */
+  findOrCreateGoogleUser(email: string, name: string): User {
+    const existing = this.getUserByUsername(email);
+    if (existing) {
+      return {
+        id: existing.id,
+        name: existing.name,
+        username: existing.username,
+        isAdmin: existing.is_admin === 1,
+        guardianEmail: (existing as any).guardian_email ?? null,
+      };
+    }
+    // Create with a random password (user can't login with password, only via Google)
+    const randomPass = require("crypto").randomBytes(32).toString("hex");
+    const hashed = hashPassword(randomPass);
+    const stmt = sqliteDb.prepare(
+      "INSERT INTO users (name, username, password) VALUES (?, ?, ?)"
+    );
+    const result = stmt.run(name, email, hashed);
+    return { id: result.lastInsertRowid as number, name, username: email, isAdmin: false, guardianEmail: null };
+  }
+
   // ── Symptom Checks ───────────────────────────────
   async getSymptomChecks(userId: number): Promise<SymptomCheck[]> {
     const rows = sqliteDb

@@ -1,6 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Activity, User, Lock, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+
+// Google Sign-In type
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (el: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
 
 interface LoginProps {
   initialMode?: "login" | "register";
@@ -8,13 +23,71 @@ interface LoginProps {
 }
 
 export default function Login({ initialMode = "login", onBack }: LoginProps) {
-  const { login, register } = useAuth();
+  const { login, register, googleLogin } = useAuth();
   const [isRegister, setIsRegister] = useState(initialMode === "register");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState("");
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Google Client ID from server
+  useEffect(() => {
+    fetch("/api/auth/google-client-id")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.clientId) setGoogleClientId(data.clientId);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Load and render Google Sign-In button
+  useEffect(() => {
+    if (!googleClientId || !googleBtnRef.current) return;
+
+    const handleGoogleResponse = async (response: any) => {
+      setError("");
+      setLoading(true);
+      try {
+        await googleLogin(response.credential);
+      } catch (err: any) {
+        setError(err.message || "Google login failed");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Load the Google Identity Services script
+    const existingScript = document.getElementById("google-gsi-script");
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.id = "google-gsi-script";
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = () => initGoogle(handleGoogleResponse);
+      document.head.appendChild(script);
+    } else {
+      initGoogle(handleGoogleResponse);
+    }
+
+    function initGoogle(callback: (response: any) => void) {
+      if (!window.google || !googleBtnRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback,
+      });
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: "outline",
+        size: "large",
+        width: googleBtnRef.current.offsetWidth,
+        text: "continue_with",
+        shape: "pill",
+      });
+    }
+  }, [googleClientId, googleLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +248,18 @@ export default function Login({ initialMode = "login", onBack }: LoginProps) {
               )}
             </button>
           </form>
+
+          {/* Google Sign-In divider + button */}
+          {googleClientId && (
+            <>
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <div ref={googleBtnRef} className="w-full flex justify-center" />
+            </>
+          )}
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             {isRegister ? "Already have an account?" : "Don't have an account?"}{" "}

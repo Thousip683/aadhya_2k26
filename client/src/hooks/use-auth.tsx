@@ -15,6 +15,7 @@ type AuthContextType = {
   isAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (name: string, username: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -68,6 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
+  const googleLogin = async (credential: string) => {
+    const res = await fetch("/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential }),
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "Google login failed");
+    }
+    const data = await res.json();
+    setUser(data.user);
+  };
+
   const logout = async () => {
     await fetch("/api/auth/logout", {
       method: "POST",
@@ -78,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin: user?.isAdmin ?? false, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin: user?.isAdmin ?? false, login, register, googleLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
