@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" fill="none">
+  <defs>
+    <!-- Green glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+    <!-- Gradient for body -->
+    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <!-- Gradient for head -->
+    <linearGradient id="headGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f0fdf4"/>
+    </linearGradient>
+    <!-- Shield gradient -->
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#84cc16"/>
+      <stop offset="100%" stop-color="#65a30d"/>
+    </linearGradient>
+    <!-- Antenna glow -->
+    <radialGradient id="antennaGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#84cc16" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#84cc16" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Floating health icons background -->
+  <!-- Plus icon top-left -->
+  <g transform="translate(40, 60)" opacity="0.25">
+    <rect x="-2" y="-10" width="4" height="20" rx="2" fill="#84cc16"/>
+    <rect x="-10" y="-2" width="20" height="4" rx="2" fill="#84cc16"/>
+  </g>
+  <!-- Heart icon top-right -->
+  <g transform="translate(340, 40)" opacity="0.2">
+    <path d="M0-8C-4-14-14-10-14-4S0 8 0 12C0 8 14-4 14-4S14-14 4-14C2-14 0-12 0-8Z" fill="#ef4444" transform="scale(0.8)"/>
+  </g>
+  <!-- Pulse line left -->
+  <g transform="translate(20, 240)" opacity="0.15">
+    <polyline points="0,0 8,-12 16,8 24,-4 32,0" stroke="#84cc16" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- DNA helix right -->
+  <g transform="translate(370, 200)" opacity="0.15">
+    <path d="M0,0 Q8,10 0,20 Q-8,30 0,40" stroke="#84cc16" stroke-width="2" fill="none"/>
+    <path d="M-6,0 Q-14,10 -6,20 Q2,30 -6,40" stroke="#65a30d" stroke-width="2" fill="none"/>
+  </g>
+  <!-- Pill bottom-left -->
+  <g transform="translate(60, 420)" opacity="0.18">
+    <rect x="-6" y="-14" width="12" height="28" rx="6" fill="#84cc16" transform="rotate(-30)"/>
+    <rect x="-6" y="-14" width="12" height="14" rx="6" fill="#a3e635" transform="rotate(-30)"/>
+  </g>
+
+  <!-- Antenna -->
+  <line x1="200" y1="100" x2="200" y2="70" stroke="#84cc16" stroke-width="4" stroke-linecap="round"/>
+  <!-- Antenna bulb glow -->
+  <circle cx="200" cy="58" r="18" fill="url(#antennaGlow)"/>
+  <!-- Antenna bulb -->
+  <circle cx="200" cy="58" r="8" fill="#84cc16" filter="url(#glow)">
+    <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Head -->
+  <g filter="url(#shadow)">
+    <rect x="120" y="100" width="160" height="120" rx="36" fill="url(#headGrad)" stroke="#d9f99d" stroke-width="2"/>
+  </g>
+
+  <!-- Eyes -->
+  <!-- Left eye -->
+  <g>
+    <circle cx="170" cy="150" r="18" fill="#f0fdf4" stroke="#d9f99d" stroke-width="1.5"/>
+    <circle cx="170" cy="150" r="10" fill="#84cc16"/>
+    <circle cx="174" cy="146" r="4" fill="white" opacity="0.8"/>
+    <circle cx="170" cy="150" r="10" fill="none" stroke="#65a30d" stroke-width="0.5"/>
+  </g>
+  <!-- Right eye -->
+  <g>
+    <circle cx="230" cy="150" r="18" fill="#f0fdf4" stroke="#d9f99d" stroke-width="1.5"/>
+    <circle cx="230" cy="150" r="10" fill="#84cc16"/>
+    <circle cx="234" cy="146" r="4" fill="white" opacity="0.8"/>
+    <circle cx="230" cy="150" r="10" fill="none" stroke="#65a30d" stroke-width="0.5"/>
+  </g>
+
+  <!-- Smile -->
+  <path d="M175 185 Q200 205 225 185" stroke="#65a30d" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Ear panels -->
+  <rect x="100" y="130" width="16" height="40" rx="8" fill="#d9f99d" stroke="#bef264" stroke-width="1"/>
+  <rect x="284" y="130" width="16" height="40" rx="8" fill="#d9f99d" stroke="#bef264" stroke-width="1"/>
+
+  <!-- Body -->
+  <g filter="url(#shadow)">
+    <rect x="130" y="230" width="140" height="140" rx="28" fill="url(#bodyGrad)" stroke="#d9f99d" stroke-width="2"/>
+  </g>
+
+  <!-- Shield on chest -->
+  <g transform="translate(200, 295)">
+    <path d="M0-30 L25-18 L25 8 Q25 28 0 38 Q-25 28 -25 8 L-25-18 Z" fill="url(#shieldGrad)" stroke="#4d7c0f" stroke-width="1.5"/>
+    <!-- Cross on shield -->
+    <rect x="-4" y="-16" width="8" height="28" rx="3" fill="white" opacity="0.9"/>
+    <rect x="-14" y="-6" width="28" height="8" rx="3" fill="white" opacity="0.9"/>
+  </g>
+
+  <!-- Arms -->
+  <!-- Left arm -->
+  <g>
+    <rect x="88" y="240" width="36" height="80" rx="18" fill="#dcfce7" stroke="#d9f99d" stroke-width="2"/>
+    <!-- Left hand -->
+    <circle cx="106" cy="330" r="16" fill="#f0fdf4" stroke="#d9f99d" stroke-width="2"/>
+    <!-- Thumbs up on left hand -->
+    <rect x="101" y="318" width="8" height="14" rx="4" fill="#dcfce7" stroke="#bef264" stroke-width="1"/>
+  </g>
+  <!-- Right arm -->
+  <g>
+    <rect x="276" y="240" width="36" height="80" rx="18" fill="#dcfce7" stroke="#d9f99d" stroke-width="2"/>
+    <!-- Right hand holding stethoscope -->
+    <circle cx="294" cy="330" r="16" fill="#f0fdf4" stroke="#d9f99d" stroke-width="2"/>
+    <!-- Stethoscope -->
+    <path d="M294 330 Q310 340 310 360 Q310 380 290 380" stroke="#65a30d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <circle cx="290" cy="380" r="6" fill="#84cc16" stroke="#4d7c0f" stroke-width="1"/>
+  </g>
+
+  <!-- Legs -->
+  <!-- Left leg -->
+  <rect x="155" y="370" width="34" height="60" rx="17" fill="#dcfce7" stroke="#d9f99d" stroke-width="2"/>
+  <!-- Left foot -->
+  <ellipse cx="172" cy="435" rx="22" ry="12" fill="#f0fdf4" stroke="#d9f99d" stroke-width="2"/>
+  <!-- Right leg -->
+  <rect x="211" y="370" width="34" height="60" rx="17" fill="#dcfce7" stroke="#d9f99d" stroke-width="2"/>
+  <!-- Right foot -->
+  <ellipse cx="228" cy="435" rx="22" ry="12" fill="#f0fdf4" stroke="#d9f99d" stroke-width="2"/>
+
+  <!-- Chest detail lines -->
+  <line x1="155" y1="250" x2="155" y2="260" stroke="#bef264" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="165" y1="250" x2="165" y2="260" stroke="#bef264" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="235" y1="250" x2="235" y2="260" stroke="#bef264" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+  <line x1="245" y1="250" x2="245" y2="260" stroke="#bef264" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+</svg>

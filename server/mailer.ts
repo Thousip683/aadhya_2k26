@@ -5,8 +5,8 @@ import nodemailer from "nodemailer";
 // or we use a fallback Ethereal (test) transport
 let transporter: nodemailer.Transporter;
 
-const SMTP_USER = process.env.SMTP_USER || "arellaraghavendra@gmail.com";
-const SMTP_PASS = process.env.SMTP_PASS || "nrcfvdowyjxfycga";
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
 
 if (SMTP_USER && SMTP_PASS) {
   transporter = nodemailer.createTransport({
@@ -93,7 +93,7 @@ export async function sendCriticalAlertEmail(
         
         <p style="color: #666; font-size: 13px; line-height: 1.6; margin-top: 24px;">
           ⚠️ This is an automated alert from RuralCare AI health analysis. Please take appropriate action 
-          and consult a medical professional if necessary. If this is a medical emergency, call <strong>112</strong> immediately.
+          and consult a medical professional if necessary. If this is a medical emergency, call <strong>108</strong> immediately.
         </p>
       </div>
       

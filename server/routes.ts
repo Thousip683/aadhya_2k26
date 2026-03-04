@@ -12,11 +12,105 @@ declare module "express-session" {
   }
 }
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDjlRjm1T_tHpELww51LdLuquljEdCQboQ";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+if (!GEMINI_API_KEY) {
+  console.warn("⚠️  GEMINI_API_KEY not set. AI symptom analysis will not work.");
+}
+
+// Models to try in order (if one hits a rate limit, try the next)
+const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"];
+
+function cleanGeminiJson(raw: string): any {
+  let cleaned = raw.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
+  // Try to extract JSON object if surrounded by extra text
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    cleaned = jsonMatch[0];
+  }
+
+  // Remove truly bad control characters (NOT newlines, carriage returns, or tabs — those are valid JSON whitespace)
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  // Try direct parse first
+  try {
+    return JSON.parse(cleaned);
+  } catch (_firstErr) {
+    // Fall through to repair attempts
+  }
+
+  // Escape unescaped newlines/tabs inside JSON string values only
+  // Walk through the string tracking whether we're inside a quoted value
+  let repaired = '';
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (esc) {
+      repaired += ch;
+      esc = false;
+      continue;
+    }
+    if (ch === '\\' && inStr) {
+      repaired += ch;
+      esc = true;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = !inStr;
+      repaired += ch;
+      continue;
+    }
+    if (inStr) {
+      if (ch === '\n') { repaired += '\\n'; continue; }
+      if (ch === '\r') { repaired += '\\r'; continue; }
+      if (ch === '\t') { repaired += '\\t'; continue; }
+    }
+    repaired += ch;
+  }
+  cleaned = repaired;
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_secondErr) {
+    // Fall through to more repairs
+  }
+
+  // Fix trailing commas before ] or }
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_thirdErr) {
+    // Fall through to bracket repair
+  }
+
+  // Try to balance unmatched brackets/braces
+  let openBraces = 0, openBrackets = 0;
+  inStr = false; esc = false;
+  for (const ch of cleaned) {
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') openBraces++;
+    if (ch === '}') openBraces--;
+    if (ch === '[') openBrackets++;
+    if (ch === ']') openBrackets--;
+  }
+  while (openBrackets > 0) { cleaned += ']'; openBrackets--; }
+  while (openBraces > 0) { cleaned += '}'; openBraces--; }
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (finalErr) {
+    console.error("🔧 JSON repair failed. Cleaned text (first 500):", cleaned.substring(0, 500));
+    throw finalErr;
+  }
+}
 
 async function analyzeSymptoms(symptoms: string[], description?: string) {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 const prompt = `
 You are an AI triage assistant designed for early health risk screening, not for diagnosing diseases.
@@ -49,7 +143,12 @@ Respond with a JSON object containing:
 - riskLevel: "Low", "Medium", "High", or "Critical"
 - possibleConditions: array of up to 3 possible conditions
 - recommendedAction: clear advice for the patient
-- explanation: a string of short bullet points separated by newlines, each starting with "•". Example: "• Point one\n• Point two\n• Point three". Each point should be one concise sentence covering a key reasoning factor (duration, severity, related risks, what to watch for, etc.)
+- explanation: a string of short bullet points separated by newlines, each starting with "•". Example: "• Point one\\n• Point two\\n• Point three". Each point should be one concise sentence covering a key reasoning factor (duration, severity, related risks, what to watch for, etc.)
+- selfCareTips: array of 1-3 self-care tip objects, each with:
+  - label: string (condition or topic name, e.g. "Fever Management", "Cold Relief")
+  - dos: array of 4-5 actionable "do" recommendations (short, practical, home-based)
+  - donts: array of 4-5 things to avoid (short, practical warnings)
+  Tips should be specific to the patient's symptoms and conditions. Include home remedies, lifestyle advice, dietary suggestions, and when to escalate to a doctor. Do NOT include medication dosages.
 
 Risk Level Mapping:
 Low → 0–25
@@ -63,28 +162,46 @@ No code blocks.
 Only the JSON object.
 `;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    // Strip markdown code fences if present
-    const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
-    return JSON.parse(cleaned);
-  } catch (err) {
-    console.error("Gemini API error:", err);
-    // Fallback mock
-    return {
-      riskScore: 42,
-      riskLevel: "Medium",
-      possibleConditions: ["Condition based on " + symptoms[0], "General Illness"],
-      recommendedAction: "Consult a healthcare professional as soon as possible.",
-      explanation: `• Based on reported symptoms: ${symptoms.join(", ")}\n• AI analysis encountered an error.`,
-    };
+  // Try each model in order
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      console.log(`🤖 Trying Gemini model: ${modelName}...`);
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      console.log(`📝 ${modelName} raw response (first 200 chars):`, text.substring(0, 200));
+      const parsed = cleanGeminiJson(text);
+      console.log(`✅ ${modelName} succeeded`);
+      return parsed;
+    } catch (err: any) {
+      const status = err?.status || err?.code || "unknown";
+      console.error(`❌ ${modelName} failed (${status}):`, err?.message || err);
+      // If rate limited (429) or overloaded (503), wait briefly before trying next model
+      if (status === 429 || status === 503) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
   }
+
+  // All models failed — return fallback
+  console.error("⚠️ All Gemini models failed, using fallback response");
+  return {
+    riskScore: 42,
+    riskLevel: "Medium",
+    possibleConditions: ["Condition based on " + (symptoms[0] || "reported symptoms"), "General Illness"],
+    recommendedAction: "Consult a healthcare professional as soon as possible.",
+    explanation: `• Based on reported symptoms: ${symptoms.join(", ")}\n• AI analysis encountered a temporary error — please try again in a moment.`,
+    selfCareTips: [],
+  };
 }
 
 async function generateFollowUpQuestions(symptoms: string[], description?: string): Promise<{ question: string; options: string[] }[]> {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `
     You are a medical triage AI assistant. A patient has reported the following:
@@ -111,20 +228,37 @@ async function generateFollowUpQuestions(symptoms: string[], description?: strin
     IMPORTANT: Return ONLY the JSON array, no markdown, no code fences.
   `;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
-    const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      console.log(`🤖 Follow-up: trying ${modelName}...`);
+      const model = genAI.getGenerativeModel({ 
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text().trim();
+      console.log(`📝 Follow-up ${modelName} raw (first 200):`, text.substring(0, 200));
+      const cleaned = text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/i, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`✅ Follow-up: ${modelName} succeeded`);
+        return parsed;
+      }
+      throw new Error("Invalid response structure");
+    } catch (err: any) {
+      const status = err?.status || err?.code || "unknown";
+      console.error(`❌ Follow-up ${modelName} failed (${status}):`, err?.message || err);
+      if (status === 429 || status === 503) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
     }
-    throw new Error("Invalid response structure");
-  } catch (err) {
-    console.error("Gemini follow-up questions error:", err);
-    // Fallback: generate contextual mock questions based on symptoms
-    return getDefaultFollowUps(symptoms);
   }
+
+  // All models failed — use local fallback
+  console.error("⚠️ All models failed for follow-up questions, using defaults");
+  return getDefaultFollowUps(symptoms);
 }
 
 function getDefaultFollowUps(symptoms: string[]): { question: string; options: string[] }[] {
@@ -170,6 +304,18 @@ function getDefaultFollowUps(symptoms: string[]): { question: string; options: s
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session?.userId) {
     return res.status(401).json({ message: "Not authenticated" });
+  }
+  next();
+}
+
+// Admin middleware
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+  const user = storage.getUserById(req.session.userId);
+  if (!user || !user.isAdmin) {
+    return res.status(403).json({ message: "Admin access required" });
   }
   next();
 }
@@ -329,15 +475,26 @@ export async function registerRoutes(
       
       const analysis = await analyzeSymptoms(input.symptoms, input.description);
       
-      const newCheck = await storage.createSymptomCheck(req.session.userId!, {
-        symptoms: input.symptoms,
+      // Ensure arrays are proper arrays of strings
+      const safeSymptoms = Array.isArray(input.symptoms) ? input.symptoms.map(String) : [];
+      const safeConditions = Array.isArray(analysis.possibleConditions) 
+        ? analysis.possibleConditions.map(String) 
+        : ["Unknown Condition"];
+
+      const checkData = {
+        symptoms: safeSymptoms,
         description: input.description || null,
-        riskScore: analysis.riskScore || Math.floor(Math.random() * 100),
-        riskLevel: analysis.riskLevel || "Medium",
-        possibleConditions: analysis.possibleConditions || ["Unknown Condition"],
-        recommendedAction: analysis.recommendedAction || "Please consult a healthcare professional.",
-        explanation: analysis.explanation || "Based on the provided symptoms."
-      });
+        riskScore: Number(analysis.riskScore) || Math.floor(Math.random() * 100),
+        riskLevel: String(analysis.riskLevel || "Medium"),
+        possibleConditions: safeConditions,
+        recommendedAction: String(analysis.recommendedAction || "Please consult a healthcare professional."),
+        explanation: String(analysis.explanation || "Based on the provided symptoms."),
+        selfCareTips: Array.isArray(analysis.selfCareTips) ? analysis.selfCareTips : []
+      };
+
+      console.log(`📊 Creating check with ${checkData.symptoms.length} symptoms, risk=${checkData.riskLevel}`);
+      
+      const newCheck = await storage.createSymptomCheck(req.session.userId!, checkData);
 
       // Auto-send email to guardian if risk is Critical or High
       const effectiveRiskLevel = newCheck.riskLevel;
@@ -407,6 +564,77 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Image Analysis (Gemini Vision) ───────────────────
+  app.post("/api/analyze-image", requireAuth, async (req, res) => {
+    try {
+      const { image } = req.body; // base64 data URL
+      if (!image || typeof image !== "string") {
+        return res.status(400).json({ message: "Image data is required" });
+      }
+
+      // Extract base64 content and mime type
+      const match = image.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) {
+        return res.status(400).json({ message: "Invalid image format. Send a base64 data URL." });
+      }
+      const mimeType = match[1];
+      const base64Data = match[2];
+
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      // Try vision-capable models in cascade
+      const visionModels = ["gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.0-flash"];
+      let text = "";
+      let success = false;
+
+      for (const modelName of visionModels) {
+        try {
+          console.log(`🖼️ Image analysis: trying ${modelName}...`);
+          const model = genAI.getGenerativeModel({ model: modelName });
+
+      const prompt = `You are a medical triage assistant helping with early health risk screening (NOT diagnosis).
+Analyze this image of a potential health symptom (like a skin rash, wound, swelling, discoloration, etc.).
+
+Describe what you observe in simple, patient-friendly language. Include:
+1. What type of symptom this appears to be (e.g., rash, bruise, swelling, wound)
+2. Visible characteristics (color, size estimation, pattern)
+3. Possible common causes (2-3 suggestions)
+4. General self-care advice
+5. Whether a doctor visit is recommended
+
+Keep the response concise (3-5 sentences max). 
+Start with a short label for the symptom, then a brief description.
+Do NOT diagnose — only describe observations and suggest next steps.
+Format: "Observed: [label]. [Description and advice]"`;
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType,
+            data: base64Data,
+          },
+        },
+      ]);
+
+          text = result.response.text().trim();
+          console.log(`✅ Image analysis: ${modelName} succeeded`);
+          success = true;
+          break;
+        } catch (imgErr: any) {
+          console.error(`❌ Image ${modelName} failed:`, imgErr?.message || imgErr);
+          if (imgErr?.status === 429 || imgErr?.status === 503) {
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+      }
+
+      res.json({ analysis: success ? text : "Could not analyze the image. Please describe the symptom in the text field instead." });
+    } catch (err) {
+      console.error("Image analysis error:", err);
+      res.json({ analysis: "Could not analyze the image. Please describe the symptom in the text field instead." });
+    }
+  });
+
   // ─── Nearby Hospitals (OpenStreetMap Overpass API — free, no key needed) ──────
   app.get("/api/nearby-hospitals", requireAuth, async (req, res) => {
     try {
@@ -417,11 +645,40 @@ export async function registerRoutes(
       }
 
       const radius = 10000; // 10 km
-      const query = `[out:json][timeout:10];(node["amenity"="hospital"](around:${radius},${lat},${lng});way["amenity"="hospital"](around:${radius},${lat},${lng}););out center;`;
-      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+      // Search hospitals, clinics, and healthcare facilities
+      const query = `[out:json][timeout:25];(node["amenity"~"hospital|clinic|doctors"](around:${radius},${lat},${lng});way["amenity"~"hospital|clinic|doctors"](around:${radius},${lat},${lng});relation["amenity"~"hospital|clinic"](around:${radius},${lat},${lng});node["healthcare"~"hospital|clinic|centre"](around:${radius},${lat},${lng}););out center;`;
 
-      const response = await fetch(url);
-      const data = await response.json();
+      // Try primary Overpass server, fallback to secondary
+      const overpassUrls = [
+        `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+        `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
+      ];
+
+      let data: any = null;
+      for (const url of overpassUrls) {
+        try {
+          console.log(`🏥 Trying Overpass: ${url.substring(0, 60)}...`);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 20000);
+          const response = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (!response.ok) {
+            console.error(`🏥 Overpass returned ${response.status}`);
+            continue;
+          }
+          data = await response.json();
+          console.log(`🏥 Overpass returned ${data.elements?.length || 0} elements`);
+          if (data.elements?.length > 0) break;
+        } catch (fetchErr: any) {
+          console.error(`🏥 Overpass fetch failed:`, fetchErr?.message || fetchErr);
+          continue;
+        }
+      }
+
+      if (!data || !data.elements) {
+        console.error('🏥 All Overpass servers failed');
+        return res.json({ hospitals: [], error: 'overpass_failed' });
+      }
 
       const R = 6371;
       const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -461,7 +718,50 @@ export async function registerRoutes(
       res.json({ hospitals });
     } catch (err) {
       console.error("Error fetching nearby hospitals:", err);
-      res.json({ hospitals: [] });
+      res.json({ hospitals: [], error: 'server_error' });
+    }
+  });
+
+  // ── Admin API Routes ────────────────────────────────────
+  app.get("/api/admin/stats", requireAdmin, (req, res) => {
+    try {
+      const stats = storage.getAdminStats();
+      res.json(stats);
+    } catch (err) {
+      console.error("Admin stats error:", err);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
+    }
+  });
+
+  app.get("/api/admin/checks", requireAdmin, (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const checks = storage.getAllChecks(limit);
+      res.json(checks);
+    } catch (err) {
+      console.error("Admin checks error:", err);
+      res.status(500).json({ message: "Failed to fetch checks" });
+    }
+  });
+
+  app.get("/api/admin/critical-checks", requireAdmin, (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const checks = storage.getCriticalChecks(limit);
+      res.json(checks);
+    } catch (err) {
+      console.error("Admin critical checks error:", err);
+      res.status(500).json({ message: "Failed to fetch critical checks" });
+    }
+  });
+
+  app.get("/api/admin/users", requireAdmin, (req, res) => {
+    try {
+      const users = storage.getAllUsers();
+      res.json(users);
+    } catch (err) {
+      console.error("Admin users error:", err);
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 

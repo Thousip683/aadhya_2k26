@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import crypto from 'crypto';
 
-const DB_PATH = path.join(process.cwd(), 'health-data.db');
+const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'health-data.db');
 const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
@@ -70,6 +70,11 @@ try {
 // Migrate: add guardian_email column if missing
 try {
   db.exec("ALTER TABLE users ADD COLUMN guardian_email TEXT DEFAULT NULL");
+} catch (_) { /* column already exists */ }
+
+// Migrate: add self_care_tips column if missing
+try {
+  db.exec("ALTER TABLE symptom_checks ADD COLUMN self_care_tips TEXT DEFAULT '[]'");
 } catch (_) { /* column already exists */ }
 
 const existingAdmin = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();

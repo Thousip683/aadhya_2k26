@@ -11,6 +11,7 @@ import { Layout } from "@/components/Layout";
 
 // Pages
 import Dashboard from "@/pages/Dashboard";
+import UserDashboard from "@/pages/UserDashboard";
 import SymptomCheck from "@/pages/SymptomCheck";
 import Result from "@/pages/Result";
 import Reports from "@/pages/Reports";
@@ -19,6 +20,7 @@ import CriticalAlerts from "@/pages/CriticalAlerts";
 import Login from "@/pages/Login";
 import Landing from "@/pages/Landing";
 import SettingsPage from "@/pages/Settings";
+import SelfCare from "@/pages/SelfCare";
 
 // Auth
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
@@ -40,12 +42,14 @@ function UserRouter() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={SymptomCheck}/>
+        <Route path="/" component={UserDashboard}/>
+        <Route path="/dashboard" component={UserDashboard}/>
         <Route path="/symptom-check" component={SymptomCheck}/>
         <Route path="/result/:id" component={Result}/>
         <Route path="/reports" component={Reports}/>
         <Route path="/history" component={History}/>
         <Route path="/insights" component={Reports}/>
+        <Route path="/self-care" component={SelfCare}/>
         <Route path="/settings" component={SettingsPage}/>
         <Route component={NotFound} />
       </Switch>

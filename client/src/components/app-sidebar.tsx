@@ -1,4 +1,4 @@
-import { Activity, BarChart2, Clock, Home, Settings, Stethoscope, Siren, LogOut } from "lucide-react";
+import { Activity, BarChart2, Clock, Home, LayoutDashboard, Leaf, Settings, Stethoscope, Siren, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -15,10 +15,12 @@ import {
 
 const allNavItems = [
   { title: "Dashboard", url: "/", icon: Home, adminOnly: true, userOnly: false },
-  { title: "Symptom Check", url: "/", icon: Stethoscope, adminOnly: false, userOnly: true },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, adminOnly: false, userOnly: true },
+  { title: "Symptom Check", url: "/symptom-check", icon: Stethoscope, adminOnly: false, userOnly: true },
   { title: "Health Reports", url: "/reports", icon: BarChart2, adminOnly: false, userOnly: true },
   { title: "Critical Alerts", url: "/critical-alerts", icon: Siren, adminOnly: true, userOnly: false },
   { title: "History", url: "/history", icon: Clock, adminOnly: false, userOnly: true },
+  { title: "Self Care", url: "/self-care", icon: Leaf, adminOnly: false, userOnly: true },
   { title: "Settings", url: "/settings", icon: Settings, adminOnly: false, userOnly: true },
 ];
 
@@ -33,13 +35,13 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarContent className="pt-6">
+      <SidebarContent className="pt-6 pb-4 overflow-y-auto">
         <div className="px-6 pb-6 flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(199,243,107,0.3)] shrink-0">
             <Activity className="w-6 h-6 text-sidebar" />
           </div>
           <span className="text-xl font-bold font-display text-sidebar-foreground tracking-tight group-data-[collapsible=icon]:hidden">
-            RuralCare
+            RuralCare Ai
           </span>
         </div>
 

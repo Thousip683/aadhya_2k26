@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
@@ -16,6 +17,7 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "10mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
@@ -25,19 +27,27 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 
 // Session middleware (SQLite-backed for persistence across restarts)
+const isProduction = process.env.NODE_ENV === "production";
+
 app.use(
   session({
     store: new SQLiteSessionStore(),
-    secret: "health-insight-hub-session-secret-2026",
+    secret: process.env.SESSION_SECRET || "health-insight-hub-dev-secret",
     resave: false,
     saveUninitialized: false,
+    proxy: isProduction,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
       sameSite: "lax",
+      secure: isProduction,
     },
   })
 );
+
+if (!process.env.SESSION_SECRET && isProduction) {
+  console.warn("⚠️  SESSION_SECRET not set. Using default — set it in production!");
+}
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

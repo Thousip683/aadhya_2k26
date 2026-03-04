@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { Mic, Loader2, Stethoscope, Check, AlertCircle, ArrowRight, ArrowLeft, MessageSquare, Brain, CheckCircle2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Stethoscope, Check, AlertCircle, ArrowRight, ArrowLeft, MessageSquare, Brain, CheckCircle2, Plus, X } from "lucide-react";
 import { useCreateSymptomCheck } from "@/hooks/use-symptom-checks";
 
 const COMMON_SYMPTOMS = [
@@ -24,6 +24,13 @@ export default function SymptomCheck() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [isRecording, setIsRecording] = useState(false);
 
+  // Image upload state
+  const [images, setImages] = useState<{ file: File; preview: string; analysis?: string; analyzing?: boolean }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Voice recognition
+  const recognitionRef = useRef<any>(null);
+
   // Guided questions state
   const [step, setStep] = useState<Step>("symptoms");
   const [followUpQuestions, setFollowUpQuestions] = useState<FollowUpQuestion[]>([]);
@@ -36,6 +43,119 @@ export default function SymptomCheck() {
       prev.includes(sym) ? prev.filter(s => s !== sym) : [...prev, sym]
     );
   };
+
+  // ─── Image Upload & Analysis ─────────────────────
+  const handleImageSelect = useCallback(async (files: FileList | null) => {
+    if (!files) return;
+    const newImages = Array.from(files).slice(0, 3 - images.length); // Max 3 images
+    
+    for (const file of newImages) {
+      if (!file.type.startsWith("image/")) continue;
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        alert("Image must be under 5MB");
+        continue;
+      }
+      
+      const preview = URL.createObjectURL(file);
+      const imgEntry = { file, preview, analyzing: true, analysis: undefined as string | undefined };
+      setImages(prev => [...prev, imgEntry]);
+      
+      // Convert to base64 and send to Gemini vision
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        try {
+          const res = await fetch("/api/analyze-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ image: base64 }),
+          });
+          const data = await res.json();
+          setImages(prev => 
+            prev.map(img => img.preview === preview 
+              ? { ...img, analyzing: false, analysis: data.analysis } 
+              : img
+            )
+          );
+          // Append analysis to description
+          if (data.analysis) {
+            setDescription(prev => {
+              const addition = `[Image Analysis: ${data.analysis}]`;
+              return prev ? `${prev}\n\n${addition}` : addition;
+            });
+          }
+        } catch {
+          setImages(prev => 
+            prev.map(img => img.preview === preview 
+              ? { ...img, analyzing: false, analysis: "Could not analyze image" } 
+              : img
+            )
+          );
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [images.length]);
+
+  const removeImage = (preview: string) => {
+    URL.revokeObjectURL(preview);
+    setImages(prev => prev.filter(img => img.preview !== preview));
+  };
+
+  // ─── Voice Input (Web Speech API) ────────────────
+  const toggleVoiceInput = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in your browser. Try Chrome or Edge.");
+      return;
+    }
+
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionRef.current = recognition;
+
+    let finalTranscript = "";
+
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + " ";
+        } else {
+          interim += transcript;
+        }
+      }
+      setDescription(prev => {
+        // Remove previous interim text, append new
+        const base = prev.replace(/\[listening\.\.\.\].*$/, "").trimEnd();
+        const newText = (finalTranscript + interim).trim();
+        return base ? `${base} ${newText}` : newText;
+      });
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.start();
+    setIsRecording(true);
+  }, [isRecording]);
 
   const handleGetFollowUps = async () => {
     if (selectedSymptoms.length === 0 && !description.trim()) return;
@@ -138,7 +258,7 @@ export default function SymptomCheck() {
       </header>
 
       {/* Step Indicator */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 notranslate" translate="no">
         {[
           { key: "symptoms", label: "Symptoms", icon: Check },
           { key: "questions", label: "Follow-up", icon: MessageSquare },
@@ -177,7 +297,7 @@ export default function SymptomCheck() {
                 <Check size={20} className="text-primary" />
                 Common Symptoms
               </h2>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3 notranslate" translate="no">
                 {COMMON_SYMPTOMS.map(sym => {
                   const isSelected = selectedSymptoms.includes(sym);
                   return (
@@ -200,7 +320,7 @@ export default function SymptomCheck() {
 
             <section>
               <h2 className="text-lg font-bold text-foreground mb-4">Detailed Description</h2>
-              <div className="relative group">
+              <div className="relative group notranslate" translate="no">
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -211,18 +331,81 @@ export default function SymptomCheck() {
                     }
                   }}
                   placeholder="E.g., I've been feeling a sharp pain in my chest for the past 2 hours and have shortness of breath... "
-                  className="w-full h-40 bg-white border-2 border-border rounded-2xl p-5 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm group-hover:border-primary/30"
+                  className="w-full h-40 bg-white border-2 border-border rounded-2xl p-5 pr-[4.5rem] text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm group-hover:border-primary/30"
                 />
-                <button 
-                  onClick={() => setIsRecording(!isRecording)}
-                  className={`absolute bottom-5 right-5 w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-md
-                    ${isRecording 
-                      ? 'bg-destructive text-white animate-pulse' 
-                      : 'bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground'}`}
-                >
-                  <Mic size={20} />
-                </button>
+                <input 
+                  ref={fileInputRef} 
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  className="hidden" 
+                  onChange={(e) => handleImageSelect(e.target.files)} 
+                />
+                <div className="absolute bottom-5 right-5 flex flex-row gap-2">
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach symptom image"
+                    disabled={images.length >= 3}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-md
+                      ${images.length >= 3
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                        : 'bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground'}`}
+                  >
+                    <Plus size={18} />
+                  </button>
+                  <button 
+                    onClick={toggleVoiceInput}
+                    title={isRecording ? "Stop recording" : "Voice input"}
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-md
+                      ${isRecording 
+                        ? 'bg-destructive text-white animate-pulse' 
+                        : 'bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground'}`}
+                  >
+                    {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+                  </button>
+                </div>
               </div>
+              {isRecording && (
+                <div className="mt-2 flex items-center gap-2 text-destructive text-sm font-medium animate-pulse">
+                  <div className="w-2 h-2 rounded-full bg-destructive" />
+                  Listening... speak your symptoms
+                </div>
+              )}
+
+              {/* Image previews (inline below textarea) */}
+              {images.length > 0 && (
+                <div className="mt-3 flex gap-3 flex-wrap">
+                  {images.map((img) => (
+                    <div key={img.preview} className="relative w-24 h-24 rounded-xl overflow-hidden border border-border shadow-sm group/img">
+                      <img src={img.preview} alt="Symptom" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeImage(img.preview)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                      >
+                        <X size={10} />
+                      </button>
+                      {img.analyzing && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Loader2 size={16} className="text-white animate-spin" />
+                        </div>
+                      )}
+                      {!img.analyzing && img.analysis && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-1">
+                          <p className="text-[9px] text-white leading-tight line-clamp-2">{img.analysis}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {images.length < 3 && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-24 h-24 rounded-xl border-2 border-dashed border-border/70 flex items-center justify-center text-muted-foreground/50 hover:border-primary/40 hover:text-primary/50 transition-all"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  )}
+                </div>
+              )}
             </section>
           </div>
 
@@ -315,7 +498,7 @@ export default function SymptomCheck() {
                 {currentQuestion.question}
               </h2>
 
-              <div className="space-y-3">
+              <div className="space-y-3 notranslate" translate="no">
                 {currentQuestion.options.map((option) => {
                   const isSelected = answers[currentQuestionIdx] === option;
                   return (
@@ -395,7 +578,7 @@ export default function SymptomCheck() {
 
       {/* STEP 3: Analyzing */}
       {step === "analyzing" && (
-        <div className="flex flex-col items-center justify-center py-20">
+        <div className="flex flex-col items-center justify-center py-20 notranslate" translate="no">
           <div className="relative">
             <div className="w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             <Brain className="absolute inset-0 m-auto w-8 h-8 text-primary animate-pulse" />

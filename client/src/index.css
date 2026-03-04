@@ -89,3 +89,12 @@
     @apply bg-muted-foreground/50;
   }
 }
+
+/* Hide Google Translate banner & branding */
+.goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-frame {
+  display: none !important;
+}
+body { top: 0 !important; }
+.goog-te-gadget { font-size: 0 !important; }
+.skiptranslate { display: none !important; }
+.VIpgJd-ZVi9od-ORHb-OEVmcd { display: none !important; }

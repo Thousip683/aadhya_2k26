@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { useSymptomCheck } from "@/hooks/use-symptom-checks";
-import { AlertTriangle, Phone, MapPin, ChevronLeft, Info, FileText, Navigation, Clock, Star, ExternalLink, Loader2 } from "lucide-react";
+import { AlertTriangle, Phone, MapPin, ChevronLeft, Info, FileText, Navigation, Clock, Star, ExternalLink, Loader2, Leaf, ShieldAlert, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Link } from "wouter";
+
+// ─── Self-Care Tip Type ──────────────────────────
+type SelfCareTip = { label: string; dos: string[]; donts: string[] };
 
 // ─── Nearby Hospitals Types ──────────────────────
 type Hospital = {
@@ -34,6 +37,28 @@ function NearbyHospitals() {
   const [error, setError] = useState("");
   const [userLat, setUserLat] = useState(0);
   const [userLng, setUserLng] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const fetchHospitals = async (lat: number, lng: number) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/nearby-hospitals?lat=${lat}&lng=${lng}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch hospitals");
+      const data = await res.json();
+      setHospitals(data.hospitals || []);
+      if ((!data.hospitals || data.hospitals.length === 0) && data.error) {
+        setError(data.error === 'overpass_failed' ? 'hospital_service_down' : 'no_results');
+      }
+    } catch {
+      setError("Could not load nearby hospitals. Please check your internet connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -47,28 +72,28 @@ function NearbyHospitals() {
         const { latitude, longitude } = position.coords;
         setUserLat(latitude);
         setUserLng(longitude);
-
-        try {
-          const res = await fetch(
-            `/api/nearby-hospitals?lat=${latitude}&lng=${longitude}`,
-            { credentials: "include" }
-          );
-          if (!res.ok) throw new Error("Failed to fetch hospitals");
-          const data = await res.json();
-          setHospitals(data.hospitals || []);
-        } catch {
-          setError("Could not load nearby hospitals");
-        } finally {
-          setLoading(false);
-        }
+        await fetchHospitals(latitude, longitude);
       },
-      () => {
-        setError("Location access denied. Enable location to see nearby hospitals.");
+      (geoErr) => {
+        console.error('Geolocation error:', geoErr.code, geoErr.message);
+        if (geoErr.code === 1) {
+          setError("location_denied");
+        } else if (geoErr.code === 3) {
+          setError("location_timeout");
+        } else {
+          setError("location_unavailable");
+        }
         setLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
     );
-  }, []);
+  }, [retryCount]);
+
+  const handleRetry = () => setRetryCount((c) => c + 1);
+
+  const googleMapsSearchUrl = userLat && userLng
+    ? `https://www.google.com/maps/search/hospitals+near+me/@${userLat},${userLng},14z`
+    : `https://www.google.com/maps/search/hospitals+near+me`;
 
   if (loading) {
     return (
@@ -81,22 +106,79 @@ function NearbyHospitals() {
     );
   }
 
-  if (error) {
+  if (error === "location_denied") {
     return (
-      <div className="mt-6 bg-black/10 rounded-2xl p-5">
+      <div className="mt-6 bg-black/10 rounded-2xl p-5 space-y-3">
+        <p className="text-white/80 text-sm flex items-center gap-2 font-medium">
+          <MapPin size={16} /> Location access denied
+        </p>
+        <p className="text-white/60 text-xs">Enable location in your browser settings to find nearby hospitals.</p>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={handleRetry} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-all">
+            Try Again
+          </button>
+          <a href={googleMapsSearchUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+            <ExternalLink size={12} /> Search on Google Maps
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === "location_timeout" || error === "location_unavailable") {
+    return (
+      <div className="mt-6 bg-black/10 rounded-2xl p-5 space-y-3">
+        <p className="text-white/80 text-sm flex items-center gap-2 font-medium">
+          <MapPin size={16} /> Could not determine your location
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={handleRetry} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-all">
+            Retry Location
+          </button>
+          <a href={googleMapsSearchUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+            <ExternalLink size={12} /> Search on Google Maps
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && error !== 'hospital_service_down' && error !== 'no_results') {
+    return (
+      <div className="mt-6 bg-black/10 rounded-2xl p-5 space-y-3">
         <p className="text-white/70 text-sm flex items-center gap-2">
           <MapPin size={16} /> {error}
         </p>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={handleRetry} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-all">
+            Try Again
+          </button>
+          <a href={googleMapsSearchUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+            <ExternalLink size={12} /> Search on Google Maps
+          </a>
+        </div>
       </div>
     );
   }
 
   if (hospitals.length === 0) {
     return (
-      <div className="mt-6 bg-black/10 rounded-2xl p-5">
-        <p className="text-white/70 text-sm flex items-center gap-2">
-          <MapPin size={16} /> No hospitals found nearby. Try calling emergency services.
+      <div className="mt-6 bg-black/10 rounded-2xl p-5 space-y-3">
+        <p className="text-white/80 text-sm flex items-center gap-2 font-medium">
+          <MapPin size={16} /> {error === 'hospital_service_down' ? 'Hospital search service is temporarily unavailable.' : 'No hospitals found in your area.'}
         </p>
+        <p className="text-white/60 text-xs">You can search directly on Google Maps or call emergency services.</p>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={handleRetry} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-all">
+            Retry Search
+          </button>
+          <a href={googleMapsSearchUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+            <ExternalLink size={12} /> Search on Google Maps
+          </a>
+          <a href="tel:108" className="px-3 py-1.5 bg-red-500/30 hover:bg-red-500/50 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+            <Phone size={12} /> Call 108
+          </a>
+        </div>
       </div>
     );
   }
@@ -183,6 +265,12 @@ export default function Result() {
   }
 
   const isEmergency = check.riskLevel.toLowerCase() === 'high' || check.riskLevel.toLowerCase() === 'critical';
+  const isMedium = check.riskLevel.toLowerCase() === 'medium';
+  
+  // ─── AI-generated self-care tips ───
+  const selfCareTips: SelfCareTip[] = Array.isArray((check as any).selfCareTips) 
+    ? (check as any).selfCareTips 
+    : [];
   
   // Color determination based on score
   const getScoreColor = (score: number) => {
@@ -217,7 +305,7 @@ export default function Result() {
                 </p>
               </div>
               <a
-                href="tel:112"
+                href="tel:108"
                 className="bg-white text-destructive hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all hover:scale-105 shadow-xl shrink-0"
               >
                 <Phone size={24} /> Call Emergency
@@ -307,6 +395,99 @@ export default function Result() {
           </div>
         </div>
       </div>
+
+      {/* ─── Self-Care Tips Section ──────────────────── */}
+      {selfCareTips.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-display font-bold text-foreground flex items-center gap-2">
+            <Leaf className="text-green-500" size={22} />
+            Self-Care Tips
+          </h2>
+
+          {/* Severity-based advisory banner */}
+          {isEmergency ? (
+            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 flex items-start gap-3">
+              <ShieldAlert size={22} className="text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-red-700">⚠️ Seek Immediate Medical Attention</p>
+                <p className="text-red-600 text-sm mt-1 leading-relaxed">
+                  Your symptoms indicate a potentially serious condition. Self-care tips below are for temporary relief only — 
+                  <strong> please visit a hospital or call emergency services (108) immediately.</strong> Do not rely on home remedies alone.
+                </p>
+              </div>
+            </div>
+          ) : isMedium ? (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 flex items-start gap-3">
+              <AlertTriangle size={22} className="text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-700">Consult a Doctor If Symptoms Persist</p>
+                <p className="text-amber-600 text-sm mt-1 leading-relaxed">
+                  Follow these self-care tips for relief. If symptoms don't improve within 2–3 days or worsen, 
+                  <strong> visit your nearest health centre or PHC.</strong>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
+              <Leaf size={18} className="text-green-500 shrink-0 mt-0.5" />
+              <p className="text-green-700 text-sm leading-relaxed">
+                Your symptoms appear manageable with self-care. Follow these tips for a faster recovery. 
+                Re-check if symptoms persist beyond 3 days.
+              </p>
+            </div>
+          )}
+
+          {/* Self-care cards — Do's and Don'ts */}
+          <div className="grid grid-cols-1 gap-4">
+            {selfCareTips.map((tip, idx) => (
+              <div key={idx} className="bg-white rounded-3xl shadow-lg shadow-black/[0.03] border border-border/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-3 border-b border-green-100">
+                  <h3 className="font-bold text-foreground text-base">{tip.label}</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/50">
+                  {/* Do's */}
+                  <div className="p-5">
+                    <h4 className="text-sm font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <ThumbsUp size={14} /> Do's
+                    </h4>
+                    <ul className="space-y-2">
+                      {tip.dos.map((d, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="mt-1 w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* Don'ts */}
+                  <div className="p-5">
+                    <h4 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <ThumbsDown size={14} /> Don'ts
+                    </h4>
+                    <ul className="space-y-2">
+                      {tip.donts.map((d, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Disclaimer at bottom */}
+          <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5">
+            <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-amber-700 text-xs leading-relaxed">
+              <strong>Disclaimer:</strong> These are AI-generated self-care suggestions, not medical prescriptions. 
+              No medication dosages are provided. Always consult a qualified doctor for diagnosis and treatment.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

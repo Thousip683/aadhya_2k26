@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { AppSidebar } from "./app-sidebar";
+import { LanguageTranslator } from "./LanguageTranslator";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 
 function MainContent({ children }: { children: ReactNode }) {
@@ -15,6 +16,10 @@ function MainContent({ children }: { children: ReactNode }) {
           <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
           <SidebarTrigger className="absolute top-4 right-4 z-20 hover:bg-black/5 hover:text-foreground p-2 rounded-lg transition-colors" />
+
+          <div className="absolute top-4 right-16 z-20">
+            <LanguageTranslator />
+          </div>
 
           <main className="flex-1 overflow-y-auto px-4 sm:px-8 pt-14 pb-8 z-10 scroll-smooth">
             {children}
