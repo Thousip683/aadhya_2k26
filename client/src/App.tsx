@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 // Components
-import { Layout } from "@/components/Layout";
+import { Layout } from "@/components/layout";
 
 // Pages
 import Dashboard from "@/pages/Dashboard";
