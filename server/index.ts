@@ -6,6 +6,8 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { SQLiteSessionStore } from "./session-store";
 
+console.log("🔍 Debug: GOOGLE_CLIENT_ID in server/index.ts:", process.env.GOOGLE_CLIENT_ID ? "SET" : "NOT SET");
+
 const app = express();
 const httpServer = createServer(app);
 

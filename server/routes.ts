@@ -18,6 +18,11 @@ if (!GEMINI_API_KEY) {
 }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+if (GOOGLE_CLIENT_ID) {
+  console.log(`✅ Google OAuth enabled with client ID: ${GOOGLE_CLIENT_ID.substring(0, 20)}...`);
+} else {
+  console.log("ℹ️  GOOGLE_CLIENT_ID not set. Google login button will be hidden.");
+}
 
 // Models to try in order (if one hits a rate limit, try the next)
 const GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"];
