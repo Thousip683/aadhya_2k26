@@ -15,7 +15,7 @@ import {
 
 const allNavItems = [
   { title: "Dashboard", url: "/", icon: Home, adminOnly: true, userOnly: false },
-  { title: "Symptom Check", url: "/symptom-check", icon: Stethoscope, adminOnly: false, userOnly: true },
+  { title: "Symptom Check", url: "/", icon: Stethoscope, adminOnly: false, userOnly: true },
   { title: "Health Reports", url: "/reports", icon: BarChart2, adminOnly: false, userOnly: true },
   { title: "Critical Alerts", url: "/critical-alerts", icon: Siren, adminOnly: true, userOnly: false },
   { title: "History", url: "/history", icon: Clock, adminOnly: false, userOnly: true },
@@ -32,19 +32,19 @@ export function AppSidebar() {
   });
 
   return (
-    <Sidebar className="border-r-0">
+    <Sidebar collapsible="icon" className="border-r-0">
       <SidebarContent className="pt-6">
-        <div className="px-6 pb-6 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(199,243,107,0.3)]">
+        <div className="px-6 pb-6 flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-[0_0_15px_rgba(199,243,107,0.3)] shrink-0">
             <Activity className="w-6 h-6 text-sidebar" />
           </div>
-          <span className="text-xl font-bold font-display text-sidebar-foreground tracking-tight">
+          <span className="text-xl font-bold font-display text-sidebar-foreground tracking-tight group-data-[collapsible=icon]:hidden">
             RuralCare
           </span>
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-semibold tracking-wider uppercase mb-2">
+          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-semibold tracking-wider uppercase mb-2 group-data-[collapsible=icon]:hidden">
             Main Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -77,7 +77,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 pt-2 space-y-3">
-        <div className="bg-primary/10 rounded-xl p-3.5 border border-primary/20 relative overflow-hidden group hover:border-primary/40 transition-colors">
+        <div className="bg-primary/10 rounded-xl p-3.5 border border-primary/20 relative overflow-hidden group hover:border-primary/40 transition-colors group-data-[collapsible=icon]:hidden">
           <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
           <h4 className="font-display font-semibold text-primary text-sm mb-0.5">AI Health Assistant</h4>
           <p className="text-xs text-sidebar-foreground/80 mb-3 leading-relaxed relative z-10">
@@ -91,17 +91,17 @@ export function AppSidebar() {
         </div>
 
         {user && (
-          <div className="flex items-center gap-3 px-2 py-1">
+          <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-primary text-sm font-bold shrink-0">
               {user.name.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
               <p className="text-sm font-semibold text-sidebar-foreground truncate">{user.name}</p>
               <p className="text-xs text-sidebar-foreground/50 truncate">@{user.username}</p>
             </div>
             <button
               onClick={logout}
-              className="text-sidebar-foreground/40 hover:text-destructive transition-colors p-1 rounded-lg hover:bg-sidebar-accent"
+              className="text-sidebar-foreground/40 hover:text-destructive transition-colors p-1 rounded-lg hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden"
               title="Logout"
             >
               <LogOut size={16} />

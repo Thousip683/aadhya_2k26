@@ -3,6 +3,7 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { SQLiteSessionStore } from "./session-store";
 
 const app = express();
 const httpServer = createServer(app);
@@ -23,9 +24,10 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Session middleware
+// Session middleware (SQLite-backed for persistence across restarts)
 app.use(
   session({
+    store: new SQLiteSessionStore(),
     secret: "health-insight-hub-session-secret-2026",
     resave: false,
     saveUninitialized: false,

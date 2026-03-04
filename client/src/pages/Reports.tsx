@@ -213,9 +213,14 @@ export default function Reports() {
     if (!checks || checks.length === 0) return;
     const header = "Date,Symptoms,Risk Score,Risk Level,Possible Conditions,Recommended Action\n";
     const rows = checks
-      .map((c: any) =>
-        `"${format(new Date(c.createdAt), "yyyy-MM-dd HH:mm")}","${(c.symptoms as string[]).join("; ")}",${c.riskScore},"${c.riskLevel}","${(c.possibleConditions as string[]).join("; ")}","${c.recommendedAction}"`
-      )
+      .map((c: any) => {
+        const symptomsText = (c.symptoms as string[]).length > 0
+          ? (c.symptoms as string[]).join("; ")
+          : c.description
+            ? c.description.split(/[.,!?]/)[0].slice(0, 80)
+            : (c.possibleConditions as string[]).slice(0, 2).join("; ") || "No symptoms specified";
+        return `"${format(new Date(c.createdAt), "yyyy-MM-dd HH:mm")}","${symptomsText}",${c.riskScore},"${c.riskLevel}","${(c.possibleConditions as string[]).join("; ")}","${c.recommendedAction}"`;
+      })
       .join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -232,14 +237,20 @@ export default function Reports() {
     if (!printWindow) return;
     const rows = checks
       .map(
-        (c: any) => `
+        (c: any) => {
+        const symptomsText = (c.symptoms as string[]).length > 0
+          ? (c.symptoms as string[]).join(", ")
+          : c.description
+            ? c.description.split(/[.,!?]/)[0].slice(0, 80)
+            : (c.possibleConditions as string[]).slice(0, 2).join(", ") || "No symptoms specified";
+        return `
         <tr>
           <td style="padding:8px;border-bottom:1px solid #eee">${format(new Date(c.createdAt), "MMM d, yyyy")}</td>
-          <td style="padding:8px;border-bottom:1px solid #eee">${(c.symptoms as string[]).join(", ")}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee">${symptomsText}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${c.riskScore >= 70 ? "#ef4444" : c.riskScore >= 40 ? "#f59e0b" : "#22c55e"}">${c.riskScore}</td>
           <td style="padding:8px;border-bottom:1px solid #eee">${c.riskLevel}</td>
           <td style="padding:8px;border-bottom:1px solid #eee">${(c.possibleConditions as string[]).join(", ")}</td>
-        </tr>`
+        </tr>`}
       )
       .join("");
     printWindow.document.write(`
@@ -350,14 +361,17 @@ export default function Reports() {
       {/* ─── Stat Cards ──────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Checks", value: totalChecks, icon: Activity, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Avg Risk Score", value: avgRisk, icon: TrendingUp, color: avgRisk >= 50 ? "text-amber-500" : "text-green-500", bg: avgRisk >= 50 ? "bg-amber-50" : "bg-green-50" },
-          { label: "High Risk", value: highRiskCount, icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
-          { label: "Low Risk", value: lowRiskCount, icon: ShieldCheck, color: "text-green-600", bg: "bg-green-50" },
+          { label: "Total Checks", value: totalChecks, icon: Activity, color: "text-primary", bg: "bg-primary/10", desc: "All-time assessments" },
+          { label: "Avg Risk Score", value: avgRisk, icon: TrendingUp, color: avgRisk >= 50 ? "text-amber-500" : "text-green-500", bg: avgRisk >= 50 ? "bg-amber-50" : "bg-green-50", desc: avgRisk >= 50 ? "Above average risk" : "Healthy range" },
+          { label: "High Risk", value: highRiskCount, icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10", desc: "Needs attention" },
+          { label: "Low Risk", value: lowRiskCount, icon: ShieldCheck, color: "text-green-600", bg: "bg-green-50", desc: "Looking good" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-2xl p-5 shadow-lg shadow-black/[0.03] border border-border/50">
-            <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
-              <stat.icon size={20} className={stat.color} />
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center shrink-0`}>
+                <stat.icon size={20} className={stat.color} />
+              </div>
+              <span className="text-[11px] text-muted-foreground font-medium leading-tight">{stat.desc}</span>
             </div>
             <p className="text-2xl font-display font-black text-foreground">{stat.value}</p>
             <p className="text-xs text-muted-foreground font-medium mt-1">{stat.label}</p>

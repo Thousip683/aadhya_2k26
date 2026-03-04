@@ -17,6 +17,7 @@ export type User = {
   name: string;
   username: string;
   isAdmin: boolean;
+  guardianEmail: string | null;
 };
 
 interface DbCheckRow {
@@ -55,7 +56,7 @@ class SQLiteStorage {
         "INSERT INTO users (name, username, password) VALUES (?, ?, ?)"
       );
       const result = stmt.run(name, username, hashed);
-      return { id: result.lastInsertRowid as number, name, username, isAdmin: false };
+      return { id: result.lastInsertRowid as number, name, username, isAdmin: false, guardianEmail: null };
     } catch (err: any) {
       if (err.code === "SQLITE_CONSTRAINT_UNIQUE") return null;
       throw err;
@@ -71,10 +72,10 @@ class SQLiteStorage {
 
   getUserById(id: number): User | null {
     const row = sqliteDb
-      .prepare("SELECT id, name, username, is_admin FROM users WHERE id = ?")
-      .get(id) as { id: number; name: string; username: string; is_admin: number } | undefined;
+      .prepare("SELECT id, name, username, is_admin, guardian_email FROM users WHERE id = ?")
+      .get(id) as { id: number; name: string; username: string; is_admin: number; guardian_email: string | null } | undefined;
     if (!row) return null;
-    return { id: row.id, name: row.name, username: row.username, isAdmin: row.is_admin === 1 };
+    return { id: row.id, name: row.name, username: row.username, isAdmin: row.is_admin === 1, guardianEmail: row.guardian_email };
   }
 
   updateUserName(id: number, name: string): User | null {
@@ -82,11 +83,23 @@ class SQLiteStorage {
     return this.getUserById(id);
   }
 
+  updateGuardianEmail(id: number, guardianEmail: string | null): User | null {
+    sqliteDb.prepare("UPDATE users SET guardian_email = ? WHERE id = ?").run(guardianEmail, id);
+    return this.getUserById(id);
+  }
+
+  getGuardianEmail(userId: number): string | null {
+    const row = sqliteDb
+      .prepare("SELECT guardian_email FROM users WHERE id = ?")
+      .get(userId) as { guardian_email: string | null } | undefined;
+    return row?.guardian_email || null;
+  }
+
   verifyLogin(username: string, password: string): User | null {
     const user = this.getUserByUsername(username);
     if (!user) return null;
     if (!verifyPassword(password, user.password)) return null;
-    return { id: user.id, name: user.name, username: user.username, isAdmin: user.is_admin === 1 };
+    return { id: user.id, name: user.name, username: user.username, isAdmin: user.is_admin === 1, guardianEmail: (user as any).guardian_email ?? null };
   }
 
   // ── Symptom Checks ───────────────────────────────

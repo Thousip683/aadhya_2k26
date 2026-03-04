@@ -204,7 +204,13 @@ export default function SymptomCheck() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="E.g., I've been feeling a sharp pain in my chest for the past 2 hours and have shortness of breath..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleGetFollowUps();
+                    }
+                  }}
+                  placeholder="E.g., I've been feeling a sharp pain in my chest for the past 2 hours and have shortness of breath... "
                   className="w-full h-40 bg-white border-2 border-border rounded-2xl p-5 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all shadow-sm group-hover:border-primary/30"
                 />
                 <button 

@@ -32,6 +32,12 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    sess TEXT NOT NULL,
+    expired INTEGER NOT NULL
+  );
 `);
 
 export function hashPassword(password: string): string {
@@ -59,6 +65,11 @@ export type DbUser = {
 // Migrate: add is_admin column if missing (for existing DBs)
 try {
   db.exec("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
+} catch (_) { /* column already exists */ }
+
+// Migrate: add guardian_email column if missing
+try {
+  db.exec("ALTER TABLE users ADD COLUMN guardian_email TEXT DEFAULT NULL");
 } catch (_) { /* column already exists */ }
 
 const existingAdmin = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();

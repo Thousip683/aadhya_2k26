@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Settings as SettingsIcon,
@@ -11,6 +11,8 @@ import {
   Save,
   Check,
   ChevronRight,
+  Heart,
+  Mail,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -19,6 +21,50 @@ export default function SettingsPage() {
   const [name, setName] = useState(user?.name || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Guardian email state
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [guardianSaving, setGuardianSaving] = useState(false);
+  const [guardianSaved, setGuardianSaved] = useState(false);
+  const [guardianError, setGuardianError] = useState("");
+  const [originalGuardianEmail, setOriginalGuardianEmail] = useState("");
+
+  useEffect(() => {
+    fetch("/api/auth/guardian-email", { credentials: "include" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.guardianEmail) {
+          setGuardianEmail(data.guardianEmail);
+          setOriginalGuardianEmail(data.guardianEmail);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveGuardianEmail = async () => {
+    setGuardianSaving(true);
+    setGuardianError("");
+    try {
+      const res = await fetch("/api/auth/guardian-email", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guardianEmail: guardianEmail.trim() || null }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setGuardianError(err.message || "Failed to save");
+        return;
+      }
+      setOriginalGuardianEmail(guardianEmail.trim());
+      setGuardianSaved(true);
+      setTimeout(() => setGuardianSaved(false), 2000);
+    } catch {
+      setGuardianError("Network error");
+    } finally {
+      setGuardianSaving(false);
+    }
+  };
 
   // Toggle states
   const [pushNotifs, setPushNotifs] = useState(true);
@@ -139,6 +185,90 @@ export default function SettingsPage() {
             checked={emailAlerts}
             onChange={setEmailAlerts}
           />
+        </div>
+      </section>
+
+      {/* Guardian / Parent Email */}
+      <section className="bg-white rounded-3xl p-6 shadow-lg shadow-black/[0.03] border border-border/50">
+        <h2 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+          <Heart size={20} className="text-red-500" />
+          Guardian / Parent Alert
+        </h2>
+        <p className="text-muted-foreground text-sm mb-5">
+          When a <span className="text-red-500 font-semibold">Critical</span> or <span className="text-amber-500 font-semibold">High</span> risk condition is detected, an automatic email alert will be sent to your guardian or parent.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-semibold text-foreground mb-1.5 block flex items-center gap-2">
+              <Mail size={14} className="text-muted-foreground" />
+              Guardian Email Address
+            </label>
+            <input
+              type="email"
+              value={guardianEmail}
+              onChange={(e) => { setGuardianEmail(e.target.value); setGuardianError(""); }}
+              placeholder="parent@example.com"
+              className="w-full px-4 py-3 rounded-xl border-2 border-border bg-secondary/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all text-sm"
+            />
+            {guardianError && (
+              <p className="text-destructive text-xs mt-1.5 font-medium">{guardianError}</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSaveGuardianEmail}
+              disabled={guardianSaving || guardianEmail.trim() === originalGuardianEmail}
+              className={`px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all ${
+                guardianSaved
+                  ? "bg-green-500 text-white"
+                  : guardianEmail.trim() !== originalGuardianEmail && !guardianSaving
+                  ? "bg-primary text-primary-foreground hover:bg-[#b8e855] shadow-md shadow-primary/20"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
+              }`}
+            >
+              {guardianSaved ? (
+                <><Check size={16} /> Saved</>
+              ) : (
+                <><Save size={16} /> {guardianSaving ? "Saving..." : "Save Guardian Email"}</>
+              )}
+            </button>
+            {originalGuardianEmail && (
+              <button
+                onClick={async () => {
+                  setGuardianSaving(true);
+                  try {
+                    const res = await fetch("/api/auth/guardian-email", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ guardianEmail: null }),
+                      credentials: "include",
+                    });
+                    if (res.ok) {
+                      setGuardianEmail("");
+                      setOriginalGuardianEmail("");
+                      setGuardianSaved(true);
+                      setTimeout(() => setGuardianSaved(false), 2000);
+                    }
+                  } catch {} finally { setGuardianSaving(false); }
+                }}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+
+          {originalGuardianEmail && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-2">
+              <Check size={16} className="text-green-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-green-800 text-sm font-semibold">Guardian alert active</p>
+                <p className="text-green-600 text-xs">Alerts will be sent to <strong>{originalGuardianEmail}</strong> when critical conditions are detected.</p>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

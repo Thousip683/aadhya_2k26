@@ -6,7 +6,11 @@ function MainContent({ children }: { children: ReactNode }) {
   const { open } = useSidebar();
 
   return (
-    <div className={`flex flex-col flex-1 min-w-0 overflow-hidden relative bg-background transition-[border-radius] duration-300 ${open ? "rounded-tl-[40px] rounded-bl-[40px]" : ""}`}>
+    <div
+      className={`flex flex-col flex-1 min-w-0 overflow-hidden relative bg-background transition-[border-radius] duration-300 ease-in-out ${
+        open ? "rounded-tl-[40px] rounded-bl-[40px]" : "rounded-none"
+      }`}
+    >
       {/* Subtle background glow effects */}
           <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 

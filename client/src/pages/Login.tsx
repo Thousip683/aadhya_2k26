@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { Activity, User, Lock, Loader2, ArrowRight } from "lucide-react";
+import { Activity, User, Lock, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
-export default function Login() {
+interface LoginProps {
+  initialMode?: "login" | "register";
+  onBack?: () => void;
+}
+
+export default function Login({ initialMode = "login", onBack }: LoginProps) {
   const { login, register } = useAuth();
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(initialMode === "register");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -38,6 +43,17 @@ export default function Login() {
       {/* Background glow effects */}
       <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* Back to Landing button */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="absolute top-6 left-6 z-20 flex items-center gap-2 text-white/40 hover:text-white/80 text-sm font-medium transition-colors"
+        >
+          <ArrowLeft size={18} />
+          Back
+        </button>
+      )}
 
       <div className="w-full max-w-md mx-4 relative z-10">
         {/* Logo */}

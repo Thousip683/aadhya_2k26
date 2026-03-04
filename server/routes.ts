@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sendCriticalAlertEmail } from "./mailer";
 
 declare module "express-session" {
   interface SessionData {
@@ -11,7 +12,7 @@ declare module "express-session" {
   }
 }
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyAL0IFPGfcNMMLP--zZvuUTvrkJa-G7Nx0";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDjlRjm1T_tHpELww51LdLuquljEdCQboQ";
 
 async function analyzeSymptoms(symptoms: string[], description?: string) {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -257,6 +258,36 @@ export async function registerRoutes(
     }
   });
 
+  // ── Guardian Email ──────────────────────────────────────
+  app.get("/api/auth/guardian-email", requireAuth, (req, res) => {
+    const email = storage.getGuardianEmail(req.session.userId!);
+    res.json({ guardianEmail: email });
+  });
+
+  app.patch("/api/auth/guardian-email", requireAuth, (req, res) => {
+    try {
+      const { guardianEmail } = req.body;
+      if (guardianEmail !== null && guardianEmail !== "") {
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(guardianEmail)) {
+          return res.status(400).json({ message: "Invalid email format" });
+        }
+      }
+      const updated = storage.updateGuardianEmail(
+        req.session.userId!,
+        guardianEmail && guardianEmail.trim() ? guardianEmail.trim() : null
+      );
+      if (!updated) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ guardianEmail: updated.guardianEmail });
+    } catch (err) {
+      console.error("Update guardian email error:", err);
+      res.status(500).json({ message: "Failed to update guardian email" });
+    }
+  });
+
   // ── Data Routes (require auth) ──────────────────────────
   app.get(api.stats.get.path, requireAuth, async (req, res) => {
     try {
@@ -307,6 +338,30 @@ export async function registerRoutes(
         recommendedAction: analysis.recommendedAction || "Please consult a healthcare professional.",
         explanation: analysis.explanation || "Based on the provided symptoms."
       });
+
+      // Auto-send email to guardian if risk is Critical or High
+      const effectiveRiskLevel = newCheck.riskLevel;
+      console.log(`📊 New check created: riskLevel=${effectiveRiskLevel}, riskScore=${newCheck.riskScore}, userId=${req.session.userId}`);
+      if (effectiveRiskLevel === "Critical" || effectiveRiskLevel === "High") {
+        const guardianEmail = storage.getGuardianEmail(req.session.userId!);
+        console.log(`📧 Guardian email for user ${req.session.userId}: ${guardianEmail || "NOT SET"}`);
+        if (guardianEmail) {
+          const user = storage.getUserById(req.session.userId!);
+          console.log(`📧 Sending critical alert email to ${guardianEmail} for ${user?.name}...`);
+          sendCriticalAlertEmail(
+            guardianEmail,
+            user?.name || "Patient",
+            newCheck.riskLevel,
+            newCheck.riskScore,
+            newCheck.symptoms,
+            newCheck.possibleConditions,
+            newCheck.recommendedAction
+          ).then(sent => console.log(`📧 Email sent result: ${sent}`))
+           .catch(err => console.error("📧 Email send failed:", err));
+        }
+      } else {
+        console.log(`📊 Risk level "${effectiveRiskLevel}" is not Critical/High, skipping email`);
+      }
       
       res.status(201).json(newCheck);
     } catch (err) {
@@ -349,6 +404,64 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error generating follow-up questions:", err);
       res.status(500).json({ message: "Failed to generate follow-up questions" });
+    }
+  });
+
+  // ─── Nearby Hospitals (OpenStreetMap Overpass API — free, no key needed) ──────
+  app.get("/api/nearby-hospitals", requireAuth, async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ message: "lat and lng query parameters required" });
+      }
+
+      const radius = 10000; // 10 km
+      const query = `[out:json][timeout:10];(node["amenity"="hospital"](around:${radius},${lat},${lng});way["amenity"="hospital"](around:${radius},${lat},${lng}););out center;`;
+      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const R = 6371;
+      const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      };
+
+      const hospitals = (data.elements || [])
+        .map((el: any) => {
+          // Nodes have lat/lon directly; ways have center.lat/center.lon
+          const pLat = el.lat ?? el.center?.lat;
+          const pLng = el.lon ?? el.center?.lon;
+          if (!pLat || !pLng) return null;
+          const distKm = haversine(lat, lng, pLat, pLng);
+          const tags = el.tags || {};
+          return {
+            name: tags.name || tags["name:en"] || "Hospital",
+            vicinity: [tags["addr:street"], tags["addr:city"], tags["addr:postcode"]].filter(Boolean).join(", ") || "",
+            distance: distKm < 1 ? `${Math.round(distKm * 1000)}m` : `${distKm.toFixed(1)} km`,
+            distKm,
+            rating: null,
+            open_now: null,
+            place_id: String(el.id),
+            lat: pLat,
+            lng: pLng,
+          };
+        })
+        .filter(Boolean)
+        .sort((a: any, b: any) => a.distKm - b.distKm)
+        .slice(0, 8)
+        .map(({ distKm, ...rest }: any) => rest); // remove helper field
+
+      res.json({ hospitals });
+    } catch (err) {
+      console.error("Error fetching nearby hospitals:", err);
+      res.json({ hospitals: [] });
     }
   });
 

@@ -30,8 +30,11 @@ export default function History() {
                   <div>
                     <div className="flex items-center gap-3 mb-1">
                       <h3 className="font-bold text-foreground text-lg">
-                        {check.symptoms.slice(0, 3).join(", ")}
-                        {check.symptoms.length > 3 ? ` +${check.symptoms.length - 3}` : ""}
+                        {check.symptoms.length > 0
+                          ? check.symptoms.slice(0, 3).join(", ") + (check.symptoms.length > 3 ? ` +${check.symptoms.length - 3}` : "")
+                          : check.description
+                            ? check.description.split(/[.,!?]/)[0].slice(0, 60) + (check.description.length > 60 ? "…" : "")
+                            : check.possibleConditions?.slice(0, 2).join(", ") || "Symptom Check"}
                       </h3>
                       <RiskBadge level={check.riskLevel} />
                     </div>

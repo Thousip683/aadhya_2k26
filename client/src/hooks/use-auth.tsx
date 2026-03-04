@@ -6,6 +6,7 @@ export type User = {
   name: string;
   username: string;
   isAdmin: boolean;
+  guardianEmail: string | null;
 };
 
 type AuthContextType = {
