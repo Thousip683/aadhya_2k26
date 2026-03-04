@@ -1,57 +1,159 @@
-import { db } from "./db";
-import {
-  symptomChecks,
-  type InsertSymptomCheck,
-  type SymptomCheck,
-} from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { sqliteDb, hashPassword, verifyPassword, type DbUser } from "./sqlite";
 
-export interface IStorage {
-  getSymptomChecks(): Promise<SymptomCheck[]>;
-  getSymptomCheck(id: number): Promise<SymptomCheck | undefined>;
-  createSymptomCheck(check: Omit<SymptomCheck, "id" | "createdAt">): Promise<SymptomCheck>;
-  getStats(): Promise<{ checksToday: number; avgRiskScore: number; highRiskCases: number }>;
+export type SymptomCheck = {
+  id: number;
+  symptoms: string[];
+  description: string | null;
+  riskScore: number;
+  riskLevel: string;
+  possibleConditions: string[];
+  recommendedAction: string;
+  explanation: string;
+  createdAt: Date;
+};
+
+export type User = {
+  id: number;
+  name: string;
+  username: string;
+  isAdmin: boolean;
+};
+
+interface DbCheckRow {
+  id: number;
+  user_id: number;
+  symptoms: string;
+  description: string | null;
+  risk_score: number;
+  risk_level: string;
+  possible_conditions: string;
+  recommended_action: string;
+  explanation: string;
+  created_at: string;
 }
 
-export class DatabaseStorage implements IStorage {
-  async getSymptomChecks(): Promise<SymptomCheck[]> {
-    return await db.select().from(symptomChecks).orderBy(desc(symptomChecks.createdAt));
+function mapRowToCheck(row: DbCheckRow): SymptomCheck {
+  return {
+    id: row.id,
+    symptoms: JSON.parse(row.symptoms),
+    description: row.description,
+    riskScore: row.risk_score,
+    riskLevel: row.risk_level,
+    possibleConditions: JSON.parse(row.possible_conditions),
+    recommendedAction: row.recommended_action,
+    explanation: row.explanation,
+    createdAt: new Date(row.created_at + "Z"),
+  };
+}
+
+class SQLiteStorage {
+  // ── Auth ──────────────────────────────────────────
+  createUser(name: string, username: string, password: string): User | null {
+    try {
+      const hashed = hashPassword(password);
+      const stmt = sqliteDb.prepare(
+        "INSERT INTO users (name, username, password) VALUES (?, ?, ?)"
+      );
+      const result = stmt.run(name, username, hashed);
+      return { id: result.lastInsertRowid as number, name, username, isAdmin: false };
+    } catch (err: any) {
+      if (err.code === "SQLITE_CONSTRAINT_UNIQUE") return null;
+      throw err;
+    }
+  }
+
+  getUserByUsername(username: string): DbUser | null {
+    const row = sqliteDb
+      .prepare("SELECT * FROM users WHERE username = ?")
+      .get(username) as DbUser | undefined;
+    return row || null;
+  }
+
+  getUserById(id: number): User | null {
+    const row = sqliteDb
+      .prepare("SELECT id, name, username, is_admin FROM users WHERE id = ?")
+      .get(id) as { id: number; name: string; username: string; is_admin: number } | undefined;
+    if (!row) return null;
+    return { id: row.id, name: row.name, username: row.username, isAdmin: row.is_admin === 1 };
+  }
+
+  updateUserName(id: number, name: string): User | null {
+    sqliteDb.prepare("UPDATE users SET name = ? WHERE id = ?").run(name, id);
+    return this.getUserById(id);
+  }
+
+  verifyLogin(username: string, password: string): User | null {
+    const user = this.getUserByUsername(username);
+    if (!user) return null;
+    if (!verifyPassword(password, user.password)) return null;
+    return { id: user.id, name: user.name, username: user.username, isAdmin: user.is_admin === 1 };
+  }
+
+  // ── Symptom Checks ───────────────────────────────
+  async getSymptomChecks(userId: number): Promise<SymptomCheck[]> {
+    const rows = sqliteDb
+      .prepare(
+        "SELECT * FROM symptom_checks WHERE user_id = ? ORDER BY created_at DESC"
+      )
+      .all(userId) as DbCheckRow[];
+    return rows.map(mapRowToCheck);
   }
 
   async getSymptomCheck(id: number): Promise<SymptomCheck | undefined> {
-    const [check] = await db.select().from(symptomChecks).where(eq(symptomChecks.id, id));
-    return check;
+    const row = sqliteDb
+      .prepare("SELECT * FROM symptom_checks WHERE id = ?")
+      .get(id) as DbCheckRow | undefined;
+    return row ? mapRowToCheck(row) : undefined;
   }
 
-  async createSymptomCheck(check: Omit<SymptomCheck, "id" | "createdAt">): Promise<SymptomCheck> {
-    const [newCheck] = await db.insert(symptomChecks).values(check).returning();
-    return newCheck;
+  async createSymptomCheck(
+    userId: number,
+    check: Omit<SymptomCheck, "id" | "createdAt">
+  ): Promise<SymptomCheck> {
+    const stmt = sqliteDb.prepare(`
+      INSERT INTO symptom_checks (user_id, symptoms, description, risk_score, risk_level, possible_conditions, recommended_action, explanation)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(
+      userId,
+      JSON.stringify(check.symptoms),
+      check.description,
+      check.riskScore,
+      check.riskLevel,
+      JSON.stringify(check.possibleConditions),
+      check.recommendedAction,
+      check.explanation
+    );
+
+    const newRow = sqliteDb
+      .prepare("SELECT * FROM symptom_checks WHERE id = ?")
+      .get(result.lastInsertRowid) as DbCheckRow;
+    return mapRowToCheck(newRow);
   }
 
-  async getStats(): Promise<{ checksToday: number; avgRiskScore: number; highRiskCases: number }> {
-    // Simple mock stats logic based on current data
-    const allChecks = await this.getSymptomChecks();
-    
-    // Checks today (mocking 124 base + actual db count)
-    const checksToday = 124 + allChecks.length;
-    
-    // Average risk score
-    let totalRisk = allChecks.reduce((sum, c) => sum + c.riskScore, 0);
-    // Base 42 avg for empty state realism
-    const avgRiskScore = allChecks.length > 0 
-      ? Math.round(totalRisk / allChecks.length)
-      : 42;
-      
-    // High risk cases
-    const highRiskCases = 3 + allChecks.filter(c => c.riskLevel === 'High' || c.riskLevel === 'Critical').length;
+  async deleteSymptomCheck(id: number, userId: number): Promise<boolean> {
+    const result = sqliteDb
+      .prepare("DELETE FROM symptom_checks WHERE id = ? AND user_id = ?")
+      .run(id, userId);
+    return result.changes > 0;
+  }
 
-    return {
-      checksToday,
-      avgRiskScore,
-      highRiskCases
-    };
+  async getStats(
+    userId: number
+  ): Promise<{ checksToday: number; avgRiskScore: number; highRiskCases: number }> {
+    const checks = await this.getSymptomChecks(userId);
+    const today = new Date().toISOString().slice(0, 10);
+    const checksToday = checks.filter(
+      (c) => c.createdAt.toISOString().slice(0, 10) === today
+    ).length;
+    const totalRisk = checks.reduce((sum, c) => sum + c.riskScore, 0);
+    const avgRiskScore =
+      checks.length > 0 ? Math.round(totalRisk / checks.length) : 0;
+    const highRiskCases = checks.filter(
+      (c) => c.riskLevel === "High" || c.riskLevel === "Critical"
+    ).length;
+    return { checksToday, avgRiskScore, highRiskCases };
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new SQLiteStorage();

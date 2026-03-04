@@ -1,10 +1,11 @@
-import { useSymptomChecks } from "@/hooks/use-symptom-checks";
+import { useSymptomChecks, useDeleteSymptomCheck } from "@/hooks/use-symptom-checks";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import { ArrowRight, Activity, Clock } from "lucide-react";
+import { ArrowRight, Activity, Clock, Trash2 } from "lucide-react";
 
 export default function History() {
   const { data: checks, isLoading } = useSymptomChecks();
+  const deleteCheck = useDeleteSymptomCheck();
 
   return (
     <div className="space-y-8 pb-10">
@@ -40,11 +41,25 @@ export default function History() {
                     </p>
                   </div>
                 </div>
-                <Link href={`/result/${check.id}`}>
-                  <button className="text-primary font-semibold text-sm flex items-center gap-1 group-hover:underline">
-                    View Details <ArrowRight size={16} />
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("Delete this symptom check?")) {
+                        deleteCheck.mutate(check.id);
+                      }
+                    }}
+                    disabled={deleteCheck.isPending}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all"
+                  >
+                    <Trash2 size={16} />
                   </button>
-                </Link>
+                  <Link href={`/result/${check.id}`}>
+                    <button className="text-primary font-semibold text-sm flex items-center gap-1 group-hover:underline">
+                      View Details <ArrowRight size={16} />
+                    </button>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

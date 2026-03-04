@@ -70,6 +70,24 @@ export function useCreateSymptomCheck() {
   });
 }
 
+export function useDeleteSymptomCheck() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/symptom-checks/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete symptom check");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.symptomChecks.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.stats.get.path] });
+    },
+  });
+}
+
 export function useStats() {
   return useQuery({
     queryKey: [api.stats.get.path],

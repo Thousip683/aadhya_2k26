@@ -135,10 +135,19 @@ export default function Result() {
               </div>
               
               <div>
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">Explanation</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {check.explanation}
-                </p>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Explanation</h3>
+                <ul className="space-y-2.5">
+                  {check.explanation
+                    .split(/[\n•\-]/)
+                    .map((s: string) => s.trim())
+                    .filter(Boolean)
+                    .map((point: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2.5 text-muted-foreground leading-relaxed">
+                        <span className="mt-1.5 w-2 h-2 rounded-full bg-primary shrink-0" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                </ul>
               </div>
             </div>
           </div>
