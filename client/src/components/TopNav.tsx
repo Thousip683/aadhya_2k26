@@ -26,10 +26,6 @@ export function TopNav() {
         </button>
         
         <div className="flex items-center gap-3 pl-2 border-l border-border/50">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-foreground font-display">Dr. Sarah Jenkins</p>
-            <p className="text-xs text-muted-foreground">Chief Medical Officer</p>
-          </div>
           <Avatar className="h-11 w-11 border-2 border-white shadow-sm cursor-pointer hover:border-primary transition-colors">
             {/* abstract geometric avatar */}
             <AvatarImage src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop" />
