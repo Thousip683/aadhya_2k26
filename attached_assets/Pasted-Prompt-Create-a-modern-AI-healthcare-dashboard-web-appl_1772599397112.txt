@@ -1,0 +1,405 @@
+Prompt
+
+Create a modern AI healthcare dashboard web application called:
+
+RuralCare AI – Intelligent Health Risk Detection System
+
+The UI design must be strongly inspired by modern SaaS analytics dashboards, similar to the reference design with:
+
+• Dark left sidebar
+• Light dashboard workspace
+• Lime green accent highlights
+• Rounded cards
+• Clean data widgets
+
+The interface must look like a professional medical analytics platform, not a student project.
+
+Overall Layout Structure
+
+Use a three-layer SaaS layout
+
+Left Sidebar Navigation
+Top Navigation Bar
+Main Dashboard Workspace
+
+Everything should use clean spacing, grid layout, and large rounded cards.
+
+Color Theme (Match the Reference UI)
+
+Use the same palette style as the provided design.
+
+Primary Background
+Soft Gray
+
+#F3F4F6
+
+Sidebar Background
+Dark Charcoal
+
+#111318
+
+Primary Accent Color (lime green)
+
+#C7F36B
+
+Secondary Accent
+
+#A3E635
+
+Card Background
+
+#FFFFFF
+
+Dark Card Background (for analytics section)
+
+#1E2127
+
+Primary Text
+
+#111827
+
+Secondary Text
+
+#6B7280
+
+Borders
+
+#E5E7EB
+
+Hover Highlight
+
+#D9F99D
+
+These colors should closely match the reference interface.
+
+Typography
+
+Use modern SaaS fonts.
+
+Primary Font
+
+Inter
+
+Headings
+
+Semi Bold
+
+Body Text
+
+Regular
+
+Avoid decorative fonts.
+
+Text hierarchy:
+
+Page Title
+22–26px
+
+Card Title
+14–16px
+
+Body
+13–14px
+
+Sidebar Navigation
+
+The sidebar should look almost identical to the reference UI style.
+
+Width
+
+240px
+
+Background
+
+Dark charcoal
+
+Navigation Items
+
+Dashboard
+Symptom Check
+Health Reports
+Community Insights
+History
+Settings
+
+Each item should have:
+
+Minimal icon
+Soft hover highlight
+Rounded selection state
+
+Active item highlight color:
+
+#C7F36B
+
+Sidebar Bottom Section
+
+Add a highlighted card similar to the reference UI.
+
+Example:
+
+AI Health Assistant
+
+Small promotional card with lime background.
+
+Top Navigation Bar
+
+Top bar includes:
+
+User avatar
+User name
+Search bar
+Notification icon
+
+Right side layout:
+
+Search input
+Notification icon
+User avatar dropdown
+
+Background should be same light workspace color.
+
+Main Dashboard Page
+
+Page title:
+
+Health Overview
+
+Subtitle:
+
+AI-powered early health risk detection
+
+Layout should use grid cards like the reference UI.
+
+Dashboard Cards
+
+Create multiple analytics cards.
+
+Card 1
+
+Symptom Checks Today
+
+Example
+
+124
+
+Small indicator:
+
++12% today
+
+Card 2
+
+Average Risk Score
+
+Example
+
+42 / 100
+
+Card 3
+
+Community Health Trend
+
+Small chart visualization.
+
+Card 4
+
+Recent Alerts
+
+Example
+
+3 High Risk Cases Detected
+
+Main Health Analytics Card
+
+Large card similar to the big graph card in the reference UI.
+
+Title
+
+Health Risk Trends
+
+Include:
+
+Bar chart or line chart.
+
+Color accents
+
+Lime green
+Soft gray bars
+
+Background
+
+Dark card style
+
+#1E2127
+
+Symptom Input Page
+
+Create a dedicated page.
+
+Title
+
+Describe Your Symptoms
+
+Large input card with rounded edges.
+
+Sections:
+
+Text input
+
+Example placeholder:
+
+"I have fever and headache for two days"
+
+Voice input button
+
+Symptom selector grid
+
+Symptoms:
+
+Fever
+Headache
+Vomiting
+Chest Pain
+Breathing Difficulty
+Cough
+Fatigue
+
+Large analyze button.
+
+Button color:
+
+#C7F36B
+
+Text color
+
+Dark
+
+Risk Result Page
+
+Show AI analysis results in card layout.
+
+Risk Score Card
+
+Large circular indicator.
+
+Example
+
+72 / 100
+
+Risk Level
+
+High
+
+Possible Conditions
+
+Respiratory Infection
+Viral Fever
+
+Recommended Action
+
+Visit hospital within 24 hours.
+
+Explanation Section
+
+Why this prediction?
+
+• Fever for two days
+• Persistent cough
+• Breathing difficulty
+
+Emergency Alert Screen
+
+If risk is critical.
+
+Display full width alert card.
+
+Background
+
+Soft red
+
+Message
+
+Emergency Health Risk Detected
+
+Action buttons
+
+Call Emergency
+Find Hospital
+
+Card Design Style
+
+All cards should use:
+
+Rounded corners
+
+Border radius
+
+20px
+
+Soft shadows
+
+Padding
+
+20px
+
+Subtle hover effect.
+
+Charts
+
+Charts must use the same minimal design style as the reference UI.
+
+Bar charts
+Dot charts
+Simple line charts
+
+Accent colors
+
+Lime green
+Light gray
+
+Avoid overly colorful charts.
+
+UI Interaction
+
+Add subtle UI polish.
+
+Hover animations
+Soft shadows
+Smooth card transitions
+
+Avoid flashy animations.
+
+Mobile Responsiveness
+
+Design must work on:
+
+Desktop
+Tablet
+Mobile
+
+On mobile:
+
+Sidebar collapses
+Cards stack vertically
+Large touch buttons
+
+Final Design Goal
+
+The final UI should look like a professional AI healthcare analytics platform used by hospitals or public health agencies.
+
+It must feel:
+
+Clean
+Data-driven
+Trustworthy
+Modern
+
+Pro Tip
+
+If you want your hackathon project to look even more impressive, add:
+
+AI chat assistant panel
+Health insights feed
+Symptom trend analytics
+
+These make the platform feel like a complete digital health system.
