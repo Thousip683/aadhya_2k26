@@ -119,3 +119,73 @@ export async function sendCriticalAlertEmail(
     return false;
   }
 }
+
+export async function sendAmbulanceDispatchEmail(
+  ambulanceEmail: string,
+  patientName: string,
+  riskLevel: string,
+  riskScore: number,
+  symptoms: string[],
+  possibleConditions: string[],
+  locationLabel: string | null,
+  latitude: number | null,
+  longitude: number | null,
+): Promise<boolean> {
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.log(`🚑 [MOCK] Would send ambulance dispatch email to ${ambulanceEmail} for patient ${patientName}`);
+    return false;
+  }
+
+  const symptomsText = symptoms.length > 0 ? symptoms.join(", ") : "Described via text";
+  const conditionsText = possibleConditions.join(", ");
+  const mapsUrl = latitude && longitude
+    ? `https://www.google.com/maps?q=${latitude},${longitude}`
+    : null;
+  const locationDisplay = locationLabel || (latitude && longitude ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : "Not available");
+
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+      <div style="background: linear-gradient(135deg, #dc2626, #991b1b); padding: 32px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">🚑 Ambulance Dispatch Request</h1>
+        <p style="color: rgba(255,255,255,0.85); margin-top: 8px; font-size: 14px;">Immediate ambulance unit required</p>
+      </div>
+      <div style="padding: 32px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          An ambulance has been requested for patient <strong>${patientName}</strong> with a
+          <span style="color: #dc2626; font-weight: bold;">${riskLevel}</span> risk assessment.
+        </p>
+        <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 16px 20px; border-radius: 0 12px 12px 0; margin: 24px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr><td style="padding: 6px 0; color: #666; width: 140px;">Patient:</td><td style="padding: 6px 0; color: #333; font-weight: bold;">${patientName}</td></tr>
+            <tr><td style="padding: 6px 0; color: #666;">Risk Score:</td><td style="padding: 6px 0; color: #dc2626; font-weight: bold; font-size: 20px;">${riskScore}/100</td></tr>
+            <tr><td style="padding: 6px 0; color: #666;">Symptoms:</td><td style="padding: 6px 0; color: #333;">${symptomsText}</td></tr>
+            <tr><td style="padding: 6px 0; color: #666;">Possible Conditions:</td><td style="padding: 6px 0; color: #333;">${conditionsText}</td></tr>
+            <tr><td style="padding: 6px 0; color: #666;">Location:</td><td style="padding: 6px 0; color: #333;">${locationDisplay}</td></tr>
+          </table>
+        </div>
+        ${mapsUrl ? `<div style="text-align: center; margin: 24px 0;"><a href="${mapsUrl}" style="display: inline-block; background: #dc2626; color: #fff; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 16px;">📍 Open Patient Location in Maps</a></div>` : ""}
+        <p style="color: #666; font-size: 13px; line-height: 1.6; margin-top: 24px;">
+          This is an automated ambulance dispatch request from RuralCare AI Health Dashboard.
+          Please dispatch an ambulance unit to the patient's location immediately.
+        </p>
+      </div>
+      <div style="background: #f9fafb; padding: 20px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">RuralCare Health Insight Hub &bull; AI-Powered Health Monitoring</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: `"RuralCare Ambulance Dispatch" <${SMTP_USER}>`,
+      to: ambulanceEmail,
+      subject: `🚑 URGENT: Ambulance Dispatch for ${patientName} — ${riskLevel} Risk`,
+      html,
+    });
+    console.log(`🚑 Ambulance dispatch email sent to ${ambulanceEmail} for patient ${patientName}`);
+    return true;
+  } catch (err) {
+    console.error("Failed to send ambulance dispatch email:", err);
+    return false;
+  }
+}

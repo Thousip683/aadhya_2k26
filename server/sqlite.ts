@@ -29,6 +29,9 @@ db.exec(`
     possible_conditions TEXT NOT NULL,
     recommended_action TEXT NOT NULL,
     explanation TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    location_label TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
@@ -39,6 +42,17 @@ db.exec(`
     expired INTEGER NOT NULL
   );
 `);
+
+// Migration: add location columns if not present
+try {
+  sqliteDb.exec(`ALTER TABLE symptom_checks ADD COLUMN latitude REAL`);
+} catch {}
+try {
+  sqliteDb.exec(`ALTER TABLE symptom_checks ADD COLUMN longitude REAL`);
+} catch {}
+try {
+  sqliteDb.exec(`ALTER TABLE symptom_checks ADD COLUMN location_label TEXT`);
+} catch {}
 
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');

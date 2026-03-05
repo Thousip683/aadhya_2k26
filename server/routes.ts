@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sendCriticalAlertEmail } from "./mailer";
+import { sendCriticalAlertEmail, sendAmbulanceDispatchEmail } from "./mailer";
 
 declare module "express-session" {
   interface SessionData {
@@ -544,7 +544,10 @@ export async function registerRoutes(
         possibleConditions: safeConditions,
         recommendedAction: String(analysis.recommendedAction || "Please consult a healthcare professional."),
         explanation: String(analysis.explanation || "Based on the provided symptoms."),
-        selfCareTips: Array.isArray(analysis.selfCareTips) ? analysis.selfCareTips : []
+        selfCareTips: Array.isArray(analysis.selfCareTips) ? analysis.selfCareTips : [],
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
+        locationLabel: input.locationLabel ?? null
       };
 
       console.log(`📊 Creating check with ${checkData.symptoms.length} symptoms, risk=${checkData.riskLevel}`);
@@ -807,6 +810,39 @@ Format: "Observed: [label]. [Description and advice]"`;
     } catch (err) {
       console.error("Admin critical checks error:", err);
       res.status(500).json({ message: "Failed to fetch critical checks" });
+    }
+  });
+
+  // Dispatch ambulance — sends email to ambulance unit
+  app.post("/api/admin/dispatch-ambulance", requireAdmin, async (req, res) => {
+    try {
+      const { checkId, ambulanceEmail } = req.body;
+      if (!checkId || !ambulanceEmail) {
+        return res.status(400).json({ message: "checkId and ambulanceEmail are required" });
+      }
+      const check = await storage.getSymptomCheck(checkId);
+      if (!check) return res.status(404).json({ message: "Check not found" });
+
+      // Find patient name from the critical checks list
+      const criticalChecks = storage.getCriticalChecks(100);
+      const matched = criticalChecks.find((c: any) => c.id === checkId);
+      const patientName = matched?.userName || "Unknown Patient";
+
+      const sent = await sendAmbulanceDispatchEmail(
+        ambulanceEmail,
+        patientName,
+        check.riskLevel,
+        check.riskScore,
+        check.symptoms,
+        check.possibleConditions,
+        check.locationLabel,
+        check.latitude,
+        check.longitude,
+      );
+      res.json({ sent, message: sent ? "Ambulance dispatch email sent" : "Email sending failed or not configured" });
+    } catch (err) {
+      console.error("Ambulance dispatch error:", err);
+      res.status(500).json({ message: "Failed to dispatch ambulance" });
     }
   });
 

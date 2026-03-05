@@ -79,18 +79,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 pt-2 space-y-3">
-        <div className="bg-primary/10 rounded-xl p-3.5 border border-primary/20 relative overflow-hidden group hover:border-primary/40 transition-colors group-data-[collapsible=icon]:hidden">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-          <h4 className="font-display font-semibold text-primary text-sm mb-0.5">AI Health Assistant</h4>
-          <p className="text-xs text-sidebar-foreground/80 mb-3 leading-relaxed relative z-10">
-            Get instant guidance on your symptoms.
-          </p>
-          <Link href="/symptom-check">
-            <button className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-colors active:scale-[0.98] shadow-lg shadow-primary/20 relative z-10">
-              New Check
-            </button>
-          </Link>
-        </div>
+        {!isAdmin && (
+          <div className="bg-primary/10 rounded-xl p-3.5 border border-primary/20 relative overflow-hidden group hover:border-primary/40 transition-colors group-data-[collapsible=icon]:hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+            <h4 className="font-display font-semibold text-primary text-sm mb-0.5">AI Health Assistant</h4>
+            <p className="text-xs text-sidebar-foreground/80 mb-3 leading-relaxed relative z-10">
+              Get instant guidance on your symptoms.
+            </p>
+            <Link href="/symptom-check">
+              <button className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-colors active:scale-[0.98] shadow-lg shadow-primary/20 relative z-10">
+                New Check
+              </button>
+            </Link>
+          </div>
+        )}
 
         {user && (
           <div className="flex items-center gap-3 px-2 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">

@@ -37,6 +37,9 @@ export const api = {
       input: z.object({
         symptoms: z.array(z.string()),
         description: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        locationLabel: z.string().optional(),
       }),
       responses: {
         201: z.custom<typeof symptomChecks.$inferSelect>(),

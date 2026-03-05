@@ -16,6 +16,9 @@ export type SymptomCheck = {
   recommendedAction: string;
   explanation: string;
   selfCareTips: SelfCareTip[];
+  latitude: number | null;
+  longitude: number | null;
+  locationLabel: string | null;
   createdAt: Date;
 };
 
@@ -38,6 +41,9 @@ interface DbCheckRow {
   recommended_action: string;
   explanation: string;
   self_care_tips: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_label: string | null;
   created_at: string;
 }
 
@@ -52,6 +58,9 @@ function mapRowToCheck(row: DbCheckRow): SymptomCheck {
     recommendedAction: row.recommended_action,
     explanation: row.explanation,
     selfCareTips: row.self_care_tips ? JSON.parse(row.self_care_tips) : [],
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    locationLabel: row.location_label ?? null,
     createdAt: new Date(row.created_at + "Z"),
   };
 }
@@ -155,8 +164,8 @@ class SQLiteStorage {
     check: Omit<SymptomCheck, "id" | "createdAt">
   ): Promise<SymptomCheck> {
     const stmt = sqliteDb.prepare(`
-      INSERT INTO symptom_checks (user_id, symptoms, description, risk_score, risk_level, possible_conditions, recommended_action, explanation, self_care_tips)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO symptom_checks (user_id, symptoms, description, risk_score, risk_level, possible_conditions, recommended_action, explanation, self_care_tips, latitude, longitude, location_label)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       userId,
@@ -167,7 +176,10 @@ class SQLiteStorage {
       JSON.stringify(check.possibleConditions),
       check.recommendedAction,
       check.explanation,
-      typeof check.selfCareTips === 'string' ? check.selfCareTips : JSON.stringify(check.selfCareTips || [])
+      typeof check.selfCareTips === 'string' ? check.selfCareTips : JSON.stringify(check.selfCareTips || []),
+      check.latitude ?? null,
+      check.longitude ?? null,
+      check.locationLabel ?? null
     );
 
     const newRow = sqliteDb

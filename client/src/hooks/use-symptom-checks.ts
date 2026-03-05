@@ -43,7 +43,7 @@ export function useSymptomCheck(id: number) {
 export function useCreateSymptomCheck() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { symptoms: string[]; description?: string }) => {
+    mutationFn: async (input: { symptoms: string[]; description?: string; latitude?: number; longitude?: number; locationLabel?: string }) => {
       const validated = api.symptomChecks.create.input.parse(input);
       const res = await fetch(api.symptomChecks.create.path, {
         method: api.symptomChecks.create.method,

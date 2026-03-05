@@ -220,11 +220,36 @@ export default function SymptomCheck() {
         ? `${enhancedDescription}. Follow-up: ${followUpSummary}`
         : `Follow-up responses: ${followUpSummary}`;
     }
-    
+
+    // Capture user's location for critical case tracking
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    let locationLabel: string | undefined;
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, enableHighAccuracy: true })
+      );
+      latitude = pos.coords.latitude;
+      longitude = pos.coords.longitude;
+      // Reverse geocode for a readable label
+      try {
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=16`);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          locationLabel = geoData.display_name || undefined;
+        }
+      } catch {}
+    } catch {
+      // Location access denied or unavailable — proceed without it
+    }
+
     try {
       const result = await createCheck.mutateAsync({
         symptoms: selectedSymptoms,
-        description: enhancedDescription || undefined
+        description: enhancedDescription || undefined,
+        latitude,
+        longitude,
+        locationLabel,
       });
       setLocation(`/result/${result.id}`);
     } catch (err) {

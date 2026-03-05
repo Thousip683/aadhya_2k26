@@ -1,6 +1,8 @@
-import { AlertTriangle, Phone, MapPin, Clock, Building2, Siren, ShieldAlert, Loader2, RefreshCw, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, MapPin, Clock, Siren, ShieldAlert, Loader2, RefreshCw, Ambulance, CheckCircle2, Navigation } from "lucide-react";
 import { useCriticalChecks } from "@/hooks/use-admin";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
@@ -18,10 +20,38 @@ function timeAgo(dateStr: string): string {
 export default function CriticalAlerts() {
   const { data: checks, isLoading, isError, refetch, isFetching } = useCriticalChecks(30);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [dispatching, setDispatching] = useState<number | null>(null);
+  const [dispatched, setDispatched] = useState<Set<number>>(new Set());
 
   const criticalCount = checks?.filter((c: any) => c.riskLevel === "Critical").length || 0;
   const highCount = checks?.filter((c: any) => c.riskLevel === "High").length || 0;
   const totalAlerts = checks?.length || 0;
+
+  const handleDispatchAmbulance = async (checkId: number) => {
+    const email = prompt("Enter ambulance unit email address:");
+    if (!email) return;
+    setDispatching(checkId);
+    try {
+      const res = await fetch("/api/admin/dispatch-ambulance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ checkId, ambulanceEmail: email }),
+      });
+      const data = await res.json();
+      if (res.ok && data.sent) {
+        setDispatched(prev => new Set(prev).add(checkId));
+        toast({ title: "Ambulance Dispatched", description: `Dispatch email sent to ${email}` });
+      } else {
+        toast({ title: "Dispatch Failed", description: data.message || "Could not send email", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Network error while dispatching", variant: "destructive" });
+    } finally {
+      setDispatching(null);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-10">
@@ -63,9 +93,6 @@ export default function CriticalAlerts() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
-            <button className="bg-white text-destructive hover:bg-gray-50 px-6 py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2.5 transition-all hover:scale-105 shadow-xl">
-              <Phone size={20} /> Call 108
-            </button>
             <button 
               onClick={() => refetch()}
               disabled={isFetching}
@@ -191,18 +218,50 @@ export default function CriticalAlerts() {
                   </div>
                 )}
 
+                {/* Patient Location */}
+                <div className="bg-secondary rounded-xl p-3 mb-4 flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Patient Location</p>
+                    {check.locationLabel ? (
+                      <p className="text-sm text-foreground leading-relaxed">{check.locationLabel}</p>
+                    ) : check.latitude && check.longitude ? (
+                      <p className="text-sm text-foreground font-mono">{check.latitude.toFixed(5)}, {check.longitude.toFixed(5)}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">Location not available</p>
+                    )}
+                    {check.latitude && check.longitude && (
+                      <a
+                        href={`https://www.google.com/maps?q=${check.latitude},${check.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary font-semibold mt-1.5 hover:underline"
+                      >
+                        <Navigation size={12} /> Open in Maps
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dispatch Ambulance Button */}
                 <div className="flex gap-3">
-                  <a href="tel:108" className="bg-destructive text-white hover:bg-destructive/90 px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all">
-                    <Phone size={14} /> Emergency Call
-                  </a>
-                  <a 
-                    href={`https://www.google.com/maps/search/hospitals+near+me`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all"
-                  >
-                    <MapPin size={14} /> Find Hospital <ExternalLink size={12} />
-                  </a>
+                  {dispatched.has(check.id) ? (
+                    <div className="bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 border border-green-200">
+                      <CheckCircle2 size={16} /> Ambulance Dispatched
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleDispatchAmbulance(check.id)}
+                      disabled={dispatching === check.id}
+                      className="bg-destructive text-white hover:bg-destructive/90 px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-destructive/20"
+                    >
+                      {dispatching === check.id ? (
+                        <><Loader2 size={16} className="animate-spin" /> Sending...</>
+                      ) : (
+                        <><Ambulance size={16} /> Send Ambulance</>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

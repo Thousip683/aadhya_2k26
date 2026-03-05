@@ -21,8 +21,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 pb-10">
       <header>
-        <h1 className="text-3xl font-display font-extrabold text-foreground">Health Overview</h1>
-        <p className="text-muted-foreground mt-1">AI-powered early health risk detection — Live data</p>
+        <h1 className="text-3xl font-display font-extrabold text-foreground">Health Overview of your community</h1>
+        <p className="text-muted-foreground mt-1">Track the real-time health data and insights for your community</p>
       </header>
 
       {isLoading && (

@@ -31,6 +31,7 @@ function AdminRouter() {
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard}/>
+        <Route path="/dashboard" component={Dashboard}/>
         <Route path="/critical-alerts" component={CriticalAlerts}/>
         <Route component={NotFound} />
       </Switch>
